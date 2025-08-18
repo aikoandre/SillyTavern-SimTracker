@@ -25,9 +25,7 @@
     bottom: 0;
     justify-content: center;
     height: 100%;
-    z-index: 10; /* Lower z-index so tabs are behind cards */
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    pointer-events: auto;
+  z-index: 10; /* Lower z-index so tabs are behind cards */
   }
 
   .sim-tracker-tab {
@@ -35,7 +33,6 @@
     height: 60px;
     border-radius: 8px;
     box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.3);
-    position: relative;
     backdrop-filter: blur(10px);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
@@ -64,15 +61,17 @@
   }
 
   .tab-initials {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: linear-gradient(145deg, #6a5acd, #5a4abc);
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 16px;
+    line-height: 1;
+    letter-spacing: 0.5px;
   }
 
   .sim-tracker-card {
