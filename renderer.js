@@ -286,7 +286,12 @@ function removeGlobalSidebars() {
     globalRightSidebar.remove();
     globalRightSidebar = null;
   }
+  // Reset the active tab index when sidebars are removed
+  lastActiveTabIndex = null;
 }
+
+// Global variable to store the last active tab index
+let lastActiveTabIndex = null;
 
 // Helper function to attach tab event listeners
 function attachTabEventListeners(sidebarElement) {
@@ -316,13 +321,25 @@ function attachTabEventListeners(sidebarElement) {
       // Get the new tabs after cloning
       const newTabs = sidebarElement.querySelectorAll(".sim-tracker-tab");
 
-      // Initially activate the first non-inactive tab and card
-      let firstActiveIndex = 0;
-      // Find the first non-inactive card
-      for (let i = 0; i < cards.length; i++) {
-        if (!cards[i].classList.contains("inactive")) {
-          firstActiveIndex = i;
-          break;
+      // Determine which tab to activate
+      let activeIndex = 0;
+      
+      // Try to restore the last active tab if it's still valid
+      if (lastActiveTabIndex !== null && lastActiveTabIndex < newTabs.length) {
+        activeIndex = lastActiveTabIndex;
+      } else {
+        // Fall back to first non-inactive tab
+        let foundActiveTab = false;
+        for (let i = 0; i < cards.length; i++) {
+          if (!cards[i].classList.contains("inactive")) {
+            activeIndex = i;
+            foundActiveTab = true;
+            break;
+          }
+        }
+        // If all characters are inactive, still show the first one
+        if (!foundActiveTab && cards.length > 0) {
+          activeIndex = 0;
         }
       }
 
@@ -333,17 +350,19 @@ function attachTabEventListeners(sidebarElement) {
         c.classList.add("tab-hidden");
       });
 
-      // Show the first tab and card by default, but don't make it "active" so user can toggle
+      // Show the determined tab and card
       if (newTabs.length > 0 && cards.length > 0) {
-        // Make the first tab active and show its card
-        newTabs[firstActiveIndex].classList.add("active");
-        cards[firstActiveIndex].classList.remove("tab-hidden");
-        cards[firstActiveIndex].classList.add("active");
+        // Make the selected tab active and show its card
+        newTabs[activeIndex].classList.add("active");
+        cards[activeIndex].classList.remove("tab-hidden");
+        cards[activeIndex].classList.add("active");
+        // Update the stored active index
+        lastActiveTabIndex = activeIndex;
       }
 
       console.log(
         `[SST] [${MODULE_NAME}]`,
-        `Activated tab ${firstActiveIndex}`
+        `Activated tab ${activeIndex} (restored: ${lastActiveTabIndex !== null})`
       );
 
       // Add click listeners to tabs
@@ -366,6 +385,8 @@ function attachTabEventListeners(sidebarElement) {
               );
               // Hide the active card (minimize functionality)
               tab.classList.remove("active");
+              // Clear the stored tab index since no tab is active now
+              lastActiveTabIndex = null;
               cards.forEach((card, cardIndex) => {
                 if (cardIndex === index) {
                   card.classList.remove("active", "sliding-in");
@@ -390,6 +411,8 @@ function attachTabEventListeners(sidebarElement) {
 
             // Activate the clicked tab
             tab.classList.add("active");
+            // Store the active tab index for future updates
+            lastActiveTabIndex = index;
 
             // Activate the corresponding card after a brief delay
             setTimeout(() => {
