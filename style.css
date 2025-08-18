@@ -282,7 +282,22 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     display: none !important;
 }
 
-/* Removed conflicting global sidebar tab styles - let templates control their own positioning */
+/* Override tab positioning for fixed sidebar containers */
+#sst-global-sidebar-left .sim-tracker-tab {
+    transform: translateX(10px) !important; /* Ensure tabs are visible on the left */
+}
+
+#sst-global-sidebar-left .sim-tracker-tab.active {
+    transform: translateX(280px) !important; /* Align with card edge */
+}
+
+#sst-global-sidebar-right .sim-tracker-tab {
+    transform: translateX(-10px) !important; /* Ensure tabs are visible on the right */
+}
+
+#sst-global-sidebar-right .sim-tracker-tab.active {
+    transform: translateX(-280px) !important; /* Align with card edge */
+}
 
 /* Preset Management Styles */
 .sst-preset-item {
