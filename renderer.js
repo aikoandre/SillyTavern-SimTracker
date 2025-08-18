@@ -1,7 +1,10 @@
 // renderer.js - HTML card rendering code
 import { getContext } from "../../../extensions.js";
 import { messageFormatting } from "../../../../script.js";
-import { extractTemplatePosition, currentTemplatePosition } from "./templating.js";
+import {
+  extractTemplatePosition,
+  currentTemplatePosition,
+} from "./templating.js";
 import { parseTrackerData } from "./formatUtils.js";
 
 const MODULE_NAME = "silly-sim-tracker";
@@ -45,17 +48,17 @@ function updateLeftSidebar(content) {
     }
 
     // Create a container that stretches vertically and position it before sheld
-    const verticalContainer = document.createElement("div");
+  const verticalContainer = document.createElement("div");
     verticalContainer.id = "sst-global-sidebar-left";
     verticalContainer.className = "vertical-container";
     verticalContainer.style.cssText = `
-          position: absolute !important;
+      position: fixed !important;
           left: 0 !important;
           top: 0 !important;
           bottom: 0 !important;
           width: auto !important;
           height: 100% !important;
-          z-index: 999 !important;
+      z-index: 9000 !important;
           box-sizing: border-box !important;
           margin: 0 !important;
           padding: 10px !important;
@@ -68,6 +71,7 @@ function updateLeftSidebar(content) {
           align-items: flex-start !important;
           visibility: visible !important;
           overflow: visible !important;
+      pointer-events: none !important;
       `;
     console.log(`[SST] [${MODULE_NAME}]`, "Created verticalContainer");
 
@@ -89,21 +93,31 @@ function updateLeftSidebar(content) {
           visibility: visible !important;
           overflow: visible !important;
           position: relative !important;
+          pointer-events: auto !important;
       `;
     console.log(`[SST] [${MODULE_NAME}]`, "Applied styles to leftSidebar");
 
     // Add the sidebar to the vertical container
     verticalContainer.appendChild(leftSidebar);
-    console.log(`[SST] [${MODULE_NAME}]`, "Appended leftSidebar to verticalContainer");
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      "Appended leftSidebar to verticalContainer"
+    );
 
     // Store reference to global sidebar
     globalLeftSidebar = verticalContainer;
-    console.log(`[SST] [${MODULE_NAME}]`, "Stored reference to globalLeftSidebar");
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      "Stored reference to globalLeftSidebar"
+    );
 
     // Insert the sidebar container directly before the sheld div in the body
     if (sheld.parentNode) {
       sheld.parentNode.insertBefore(verticalContainer, sheld);
-      console.log(`[SST] [${MODULE_NAME}]`, "Successfully inserted left sidebar before sheld");
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        "Successfully inserted left sidebar before sheld"
+      );
     } else {
       console.error("[SST] sheld has no parent node!");
       // Fallback: append to body
@@ -114,16 +128,22 @@ function updateLeftSidebar(content) {
     attachTabEventListeners(leftSidebar);
 
     // Debug: Log the final container
-    console.log(`[SST] [${MODULE_NAME}]`, "Created left sidebar container:", verticalContainer);
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      "Created left sidebar container:",
+      verticalContainer
+    );
 
     return verticalContainer;
   } else {
-    // Update existing sidebar content without re-attaching event listeners
+    // Update existing sidebar content and re-attach event listeners
     const leftSidebar = globalLeftSidebar.querySelector(
       "#sst-sidebar-left-content"
     );
     if (leftSidebar) {
       leftSidebar.innerHTML = content;
+      // Re-attach event listeners for updated content
+      attachTabEventListeners(leftSidebar);
     }
   }
 }
@@ -146,17 +166,17 @@ function updateRightSidebar(content) {
     }
 
     // Create a container that stretches vertically and position it before sheld
-    const verticalContainer = document.createElement("div");
+  const verticalContainer = document.createElement("div");
     verticalContainer.id = "sst-global-sidebar-right";
     verticalContainer.className = "vertical-container";
     verticalContainer.style.cssText = `
-          position: absolute !important;
+      position: fixed !important;
           right: 0 !important;
           top: 0 !important;
           bottom: 0 !important;
           width: auto !important;
           height: 100% !important;
-          z-index: 999 !important;
+      z-index: 9000 !important;
           box-sizing: border-box !important;
           margin: 0 !important;
           padding: 10px !important;
@@ -169,6 +189,7 @@ function updateRightSidebar(content) {
           align-items: flex-end !important;
           visibility: visible !important;
           overflow: visible !important;
+      pointer-events: none !important;
       `;
     console.log(`[SST] [${MODULE_NAME}]`, "Created verticalContainer");
 
@@ -190,20 +211,30 @@ function updateRightSidebar(content) {
           visibility: visible !important;
           overflow: visible !important;
           position: relative !important;
+          pointer-events: auto !important;
       `;
 
     // Add the sidebar to the vertical container
     verticalContainer.appendChild(rightSidebar);
-    console.log(`[SST] [${MODULE_NAME}]`, "Appended rightSidebar to verticalContainer");
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      "Appended rightSidebar to verticalContainer"
+    );
 
     // Store reference to global sidebar
     globalRightSidebar = verticalContainer;
-    console.log(`[SST] [${MODULE_NAME}]`, "Stored reference to globalRightSidebar");
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      "Stored reference to globalRightSidebar"
+    );
 
     // Insert the sidebar container directly before the sheld div in the body
     if (sheld.parentNode) {
       sheld.parentNode.insertBefore(verticalContainer, sheld);
-      console.log(`[SST] [${MODULE_NAME}]`, "Successfully inserted right sidebar before sheld");
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        "Successfully inserted right sidebar before sheld"
+      );
     } else {
       console.error("[SST] sheld has no parent node!");
       // Fallback: append to body
@@ -215,12 +246,14 @@ function updateRightSidebar(content) {
 
     return verticalContainer;
   } else {
-    // Update existing sidebar content without re-attaching event listeners
+    // Update existing sidebar content and re-attach event listeners
     const rightSidebar = globalRightSidebar.querySelector(
       "#sst-sidebar-right-content"
     );
     if (rightSidebar) {
       rightSidebar.innerHTML = content;
+      // Re-attach event listeners for updated content
+      attachTabEventListeners(rightSidebar);
     }
   }
 }
@@ -257,12 +290,26 @@ function removeGlobalSidebars() {
 
 // Helper function to attach tab event listeners
 function attachTabEventListeners(sidebarElement) {
-  // Use setTimeout to ensure DOM is ready
-  setTimeout(() => {
+  // Use a longer timeout and multiple checks to ensure DOM is ready
+  const attachListeners = () => {
     const tabs = sidebarElement.querySelectorAll(".sim-tracker-tab");
     const cards = sidebarElement.querySelectorAll(".sim-tracker-card");
 
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
+      `Found ${tabs.length} tabs and ${cards.length} cards`
+    );
+
     if (tabs.length > 0 && cards.length > 0) {
+      // Remove any existing event listeners by cloning elements
+      tabs.forEach((tab, index) => {
+        const newTab = tab.cloneNode(true);
+        tab.parentNode.replaceChild(newTab, tab);
+      });
+
+      // Get the new tabs after cloning
+      const newTabs = sidebarElement.querySelectorAll(".sim-tracker-tab");
+
       // Initially activate the first non-inactive tab and card
       let firstActiveIndex = 0;
       // Find the first non-inactive card
@@ -273,70 +320,96 @@ function attachTabEventListeners(sidebarElement) {
         }
       }
 
-      if (tabs[firstActiveIndex])
-        tabs[firstActiveIndex].classList.add("active");
-      if (cards[firstActiveIndex])
+      // Clear all active states first
+      newTabs.forEach((t) => t.classList.remove("active"));
+      cards.forEach((c) => {
+        c.classList.remove("active", "sliding-in", "sliding-out");
+        c.classList.add("tab-hidden");
+      });
+
+      // Activate the first tab and card
+      if (newTabs[firstActiveIndex]) {
+        newTabs[firstActiveIndex].classList.add("active");
+      }
+      if (cards[firstActiveIndex]) {
+        cards[firstActiveIndex].classList.remove("tab-hidden");
         cards[firstActiveIndex].classList.add("active");
+      }
+
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        `Activated tab ${firstActiveIndex}`
+      );
 
       // Add click listeners to tabs
-      tabs.forEach((tab, index) => {
-        tab.addEventListener("click", () => {
-          // Check if this tab is already active
-          const isActive = tab.classList.contains("active");
+      newTabs.forEach((tab, index) => {
+        tab.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-          // Remove active class from all tabs
-          tabs.forEach((t) => t.classList.remove("active"));
+            console.log(`[SST] [${MODULE_NAME}]`, `Tab ${index} clicked`);
 
-          // Handle card and tab animations
-          cards.forEach((card, cardIndex) => {
-            const correspondingTab = tabs[cardIndex];
-            if (cardIndex === index && !isActive) {
-              // Slide in the selected card and tab
-              card.classList.remove("sliding-out", "tab-hidden");
-              card.classList.add("sliding-in");
-              if (correspondingTab) {
-                correspondingTab.classList.remove("sliding-out", "tab-hidden");
-                correspondingTab.classList.add("sliding-in");
-              }
-              // Add active class after a short delay to ensure the animation works
-              setTimeout(() => {
-                card.classList.remove("sliding-in");
-                card.classList.add("active");
-                if (correspondingTab) {
-                  correspondingTab.classList.remove("sliding-in");
-                  correspondingTab.classList.add("active");
-                }
-              }, 10);
-            } else {
-              // Slide out all other cards and tabs
-              if (card.classList.contains("active")) {
-                card.classList.remove("active");
-                card.classList.remove("sliding-in");
-                card.classList.add("sliding-out");
-                if (correspondingTab) {
-                  correspondingTab.classList.remove("active");
-                  correspondingTab.classList.remove("sliding-in");
-                  correspondingTab.classList.add("sliding-out");
-                }
-                // Add tab-hidden class after animation completes
-                setTimeout(() => {
-                  card.classList.add("tab-hidden");
-                  card.classList.remove("sliding-out");
-                  if (correspondingTab) {
-                    correspondingTab.classList.add("tab-hidden");
-                    correspondingTab.classList.remove("sliding-out");
-                  }
-                }, 300);
-              }
+            // Check if this tab is already active
+            const isActive = tab.classList.contains("active");
+
+            if (isActive) {
+              console.log(
+                `[SST] [${MODULE_NAME}]`,
+                `Tab ${index} is already active`
+              );
+              return; // Don't do anything if already active
             }
-          });
 
-          // If the clicked tab wasn't already active, activate it
-          if (!isActive) {
+            // Remove active class from all tabs and cards
+            newTabs.forEach((t) => t.classList.remove("active"));
+            cards.forEach((card) => {
+              card.classList.remove("active", "sliding-in");
+              if (!card.classList.contains("sliding-out")) {
+                card.classList.add("sliding-out");
+              }
+            });
+
+            // Activate the clicked tab
             tab.classList.add("active");
-          }
-        });
+
+            // Activate the corresponding card after a brief delay
+            setTimeout(() => {
+              cards.forEach((card, cardIndex) => {
+                if (cardIndex === index) {
+                  card.classList.remove("sliding-out", "tab-hidden");
+                  card.classList.add("sliding-in");
+                  setTimeout(() => {
+                    card.classList.remove("sliding-in");
+                    card.classList.add("active");
+                  }, 50);
+                } else {
+                  setTimeout(() => {
+                    card.classList.add("tab-hidden");
+                    card.classList.remove("sliding-out");
+                  }, 300);
+                }
+              });
+            }, 50);
+
+            console.log(`[SST] [${MODULE_NAME}]`, `Switched to tab ${index}`);
+          },
+          { passive: false }
+        );
       });
+
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        "Event listeners attached successfully"
+      );
+    } else {
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        "No tabs or cards found, retrying..."
+      );
+      // Retry after a longer delay if elements aren't ready
+      setTimeout(attachListeners, 100);
     }
 
     const container = sidebarElement.querySelector(
@@ -344,28 +417,42 @@ function attachTabEventListeners(sidebarElement) {
     );
     if (container) {
       container.style.cssText += `
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-                display: block !important;
-                visibility: visible !important;
-                height: 100%;
-            `;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        visibility: visible !important;
+        height: 100%;
+      `;
     }
 
     // Force reflow to ensure proper rendering
     sidebarElement.offsetHeight;
-  }, 0);
+  };
+
+  // Start the attachment process
+  setTimeout(attachListeners, 100);
 }
 
 // --- RENDER LOGIC ---
-const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCardTemplate, getReactionEmoji, darkenColor, lastSimJsonString) => {
+const renderTracker = (
+  mesId,
+  get_settings,
+  compiledWrapperTemplate,
+  compiledCardTemplate,
+  getReactionEmoji,
+  darkenColor,
+  lastSimJsonString
+) => {
   try {
     if (!get_settings("isEnabled")) return;
     const context = getContext();
     const message = context.chat[mesId];
     if (!message) {
-      console.log(`[SST] [${MODULE_NAME}]`, `Error: Could not find message with ID ${mesId}. Aborting render.`);
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        `Error: Could not find message with ID ${mesId}. Aborting render.`
+      );
       return;
     }
     const messageElement = document.querySelector(
@@ -375,7 +462,8 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
 
     // Log message element dimensions for debugging layout issues
     const messageRect = messageElement.getBoundingClientRect();
-    console.log(`[SST] [${MODULE_NAME}]`,
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
       `Message ID ${mesId} dimensions - Width: ${messageRect.width.toFixed(
         2
       )}px, Height: ${messageRect.height.toFixed(2)}px`
@@ -431,7 +519,9 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
       lastSimJsonString = content;
 
       // Remove any preparing text
-      const preparingText = messageElement.parentNode.querySelector(".sst-preparing-text");
+      const preparingText = messageElement.parentNode.querySelector(
+        ".sst-preparing-text"
+      );
       if (preparingText) {
         preparingText.remove();
         // Remove this mesText from the set since it no longer has preparing text
@@ -443,7 +533,8 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
         // Use our new universal parser that can handle both JSON and YAML
         jsonData = parseTrackerData(content);
       } catch (parseError) {
-        console.log(`[SST] [${MODULE_NAME}]`,
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
           `Failed to parse tracker data in message ID ${mesId}. Error: ${parseError.message}`
         );
         messageElement.insertAdjacentHTML(
@@ -454,7 +545,10 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
       }
 
       if (typeof jsonData !== "object" || jsonData === null) {
-        console.log(`[SST] [${MODULE_NAME}]`, `Parsed data in message ID ${mesId} is not a valid object.`);
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
+          `Parsed data in message ID ${mesId} is not a valid object.`
+        );
         return;
       }
 
@@ -500,7 +594,8 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
             const stats = character;
             const name = character.name;
             if (!stats) {
-              console.log(`[SST] [${MODULE_NAME}]`,
+              console.log(
+                `[SST] [${MODULE_NAME}]`,
                 `No stats found for character "${name}" in message ID ${mesId}. Skipping card.`
               );
               return null;
@@ -546,7 +641,8 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
             const stats = character;
             const name = character.name;
             if (!stats) {
-              console.log(`[SST] [${MODULE_NAME}]`,
+              console.log(
+                `[SST] [${MODULE_NAME}]`,
                 `No stats found for character "${name}" in message ID ${mesId}. Skipping card.`
               );
               return "";
@@ -636,13 +732,22 @@ const renderTracker = (mesId, get_settings, compiledWrapperTemplate, compiledCar
   } catch (error) {
     // Clear the flag on error
     isGenerationInProgress = false;
-    console.log(`[SST] [${MODULE_NAME}]`,
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
       `A critical error occurred in renderTracker for message ID ${mesId}. Please check the console. Error: ${error.stack}`
     );
   }
 };
 
-const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, compiledCardTemplate, getReactionEmoji, darkenColor, lastSimJsonString) => {
+const renderTrackerWithoutSim = (
+  mesId,
+  get_settings,
+  compiledWrapperTemplate,
+  compiledCardTemplate,
+  getReactionEmoji,
+  darkenColor,
+  lastSimJsonString
+) => {
   try {
     if (!get_settings("isEnabled")) return;
 
@@ -650,7 +755,10 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
     const message = context.chat[mesId];
 
     if (!message) {
-      console.log(`[SST] [${MODULE_NAME}]`, `Error: Could not find message with ID ${mesId}. Aborting render.`);
+      console.log(
+        `[SST] [${MODULE_NAME}]`,
+        `Error: Could not find message with ID ${mesId}. Aborting render.`
+      );
       return;
     }
 
@@ -703,7 +811,9 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
       lastSimJsonString = jsonContent;
 
       // Remove any preparing text
-      const preparingText = messageElement.parentNode.querySelector(".sst-preparing-text");
+      const preparingText = messageElement.parentNode.querySelector(
+        ".sst-preparing-text"
+      );
       if (preparingText) {
         preparingText.remove();
         // Remove this mesText from the set since it no longer has preparing text
@@ -716,7 +826,8 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
         // Use our new universal parser that can handle both JSON and YAML
         jsonData = parseTrackerData(jsonContent);
       } catch (parseError) {
-        console.log(`[SST] [${MODULE_NAME}]`,
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
           `Failed to parse tracker data in message ID ${mesId}. Error: ${parseError.message}`
         );
         const errorHtml = `<div style="color: red; font-family: monospace;">[SillySimTracker] Error: Invalid tracker data format in code block.</div>`;
@@ -725,7 +836,10 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
       }
 
       if (typeof jsonData !== "object" || jsonData === null) {
-        console.log(`[SST] [${MODULE_NAME}]`, `Parsed data in message ID ${mesId} is not a valid object.`);
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
+          `Parsed data in message ID ${mesId} is not a valid object.`
+        );
         return;
       }
       // Handle both old and new JSON formats
@@ -770,7 +884,8 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
             const stats = character;
             const name = character.name;
             if (!stats) {
-              console.log(`[SST] [${MODULE_NAME}]`,
+              console.log(
+                `[SST] [${MODULE_NAME}]`,
                 `No stats found for character "${name}" in message ID ${mesId}. Skipping card.`
               );
               return null;
@@ -816,7 +931,8 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
             const stats = character;
             const name = character.name;
             if (!stats) {
-              console.log(`[SST] [${MODULE_NAME}]`,
+              console.log(
+                `[SST] [${MODULE_NAME}]`,
                 `No stats found for character "${name}" in message ID ${mesId}. Skipping card.`
               );
               return "";
@@ -904,14 +1020,22 @@ const renderTrackerWithoutSim = (mesId, get_settings, compiledWrapperTemplate, c
       }
     }
   } catch (error) {
-    console.log(`[SST] [${MODULE_NAME}]`,
+    console.log(
+      `[SST] [${MODULE_NAME}]`,
       `A critical error occurred in renderTrackerWithoutSim for message ID ${mesId}. Please check the console. Error: ${error.stack}`
     );
   }
 };
 
-const refreshAllCards = (get_settings, CONTAINER_ID, renderTrackerWithoutSim) => {
-  console.log(`[SST] [${MODULE_NAME}]`, "Refreshing all tracker cards on screen.");
+const refreshAllCards = (
+  get_settings,
+  CONTAINER_ID,
+  renderTrackerWithoutSim
+) => {
+  console.log(
+    `[SST] [${MODULE_NAME}]`,
+    "Refreshing all tracker cards on screen."
+  );
 
   // First, remove all existing tracker containers to prevent duplicates
   document.querySelectorAll(`#${CONTAINER_ID}`).forEach((container) => {
@@ -944,5 +1068,5 @@ export {
   pendingRightSidebarContent,
   setGenerationInProgress,
   getGenerationInProgress,
-  CONTAINER_ID
+  CONTAINER_ID,
 };

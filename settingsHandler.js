@@ -1,11 +1,15 @@
 // settingsHandler.js - SillyTavern settings reading and management
 
-const { extensionSettings, saveSettingsDebounced } = SillyTavern.getContext();
+import { saveSettingsDebounced } from "../../../../script.js";
+import { extension_settings } from "../../../extensions.js";
 import { sanitizeFieldKey } from "./utils.js";
 import { currentTemplatePosition, unescapeHtml } from "./templating.js";
 import { populateTemplateDropdown } from "./templating.js";
 
 const MODULE_NAME = "silly-sim-tracker";
+
+// Get extensionSettings reference
+const extensionSettings = extension_settings;
 
 // Default fields for sim data, used for both initial settings and the {{sim_format}} macro
 const defaultSimFields = [
@@ -90,7 +94,11 @@ const settings_ui_map = {};
 
 const get_settings = (key) => settings[key] ?? default_settings[key];
 const set_settings = (key, value) => {
+  console.log(`[SST] [${MODULE_NAME}]`, `Setting ${key} = ${value}`);
   settings[key] = value;
+  // Ensure extensionSettings is also updated
+  extensionSettings[MODULE_NAME] = settings;
+  console.log(`[SST] [${MODULE_NAME}]`, `Settings updated:`, extensionSettings[MODULE_NAME]);
   saveSettingsDebounced();
 };
 
@@ -180,7 +188,7 @@ const refresh_settings_ui = () => {
 };
 
 const bind_setting = (selector, key, type) => {
-  const element = $(selector);
+  const element = $(`#silly-sim-tracker-settings ${selector}`);
   if (element.length === 0) {
     console.log(
       `[SST] [${MODULE_NAME}]`,
@@ -201,6 +209,7 @@ const bind_setting = (selector, key, type) => {
         value = element.val();
         break;
     }
+    console.log(`[SST] [${MODULE_NAME}]`, `UI changed ${key} to:`, value);
     set_settings(key, value);
     if (key === "templateFile") {
       loadTemplate().then(() => {
@@ -220,6 +229,7 @@ const initialize_settings_listeners = (
   showManagePresetsModal
 ) => {
   console.log(`[SST] [${MODULE_NAME}]`, "Binding settings UI elements...");
+  console.log(`[SST] [${MODULE_NAME}]`, "Current settings state:", settings);
 
   bind_setting("#isEnabled", "isEnabled", "boolean");
   bind_setting("#codeBlockIdentifier", "codeBlockIdentifier", "text");
@@ -230,7 +240,7 @@ const initialize_settings_listeners = (
   bind_setting("#datingSimPrompt", "datingSimPrompt", "textarea");
 
   // Listener for the default template dropdown
-  const $templateSelect = $("#templateFile");
+  const $templateSelect = $("#silly-sim-tracker-settings #templateFile");
   if ($templateSelect.length) {
     settings_ui_map["templateFile"] = [$templateSelect, "text"];
     $templateSelect.on("change", async () => {
@@ -324,13 +334,13 @@ const initialize_settings_listeners = (
     });
   }
 
-  $("#uploadCustomTemplateBtn").on("click", () => {
-    $("#customTemplateUpload").click(); // Trigger the hidden file input
+  $("#silly-sim-tracker-settings #uploadCustomTemplateBtn").on("click", () => {
+    $("#silly-sim-tracker-settings #customTemplateUpload").click(); // Trigger the hidden file input
   });
 
-  $("#customTemplateUpload").on("change", handleCustomTemplateUpload);
+  $("#silly-sim-tracker-settings #customTemplateUpload").on("change", handleCustomTemplateUpload);
 
-  $("#clearCustomTemplateBtn").on("click", async () => {
+  $("#silly-sim-tracker-settings #clearCustomTemplateBtn").on("click", async () => {
     console.log(`[SST] [${MODULE_NAME}]`, "Clearing custom template.");
     set_settings("customTemplateHtml", "");
     toastr.info("Custom template cleared. Reverted to default.");
@@ -339,7 +349,7 @@ const initialize_settings_listeners = (
   });
 
   // Listener for the JSON format migration button
-  $("#migrateJsonFormatBtn").on("click", () => {
+  $("#silly-sim-tracker-settings #migrateJsonFormatBtn").on("click", () => {
     if (
       confirm(
         "This will migrate all existing sim data to the new format with worldData and characters array. This operation cannot be undone. Are you sure?"
@@ -350,26 +360,26 @@ const initialize_settings_listeners = (
   });
 
   // Handle preset export
-  $("#exportPresetBtn").on("click", () => {
+  $("#silly-sim-tracker-settings #exportPresetBtn").on("click", () => {
     handlePresetExport(loadTemplate, refreshAllCards);
   });
 
   // Handle preset import
-  $("#importPresetBtn").on("click", () => {
-    $("#presetImportInput").click();
+  $("#silly-sim-tracker-settings #importPresetBtn").on("click", () => {
+    $("#silly-sim-tracker-settings #presetImportInput").click();
   });
   
-  $("#presetImportInput").on("change", (event) => {
+  $("#silly-sim-tracker-settings #presetImportInput").on("change", (event) => {
     handlePresetImport(event, loadTemplate, refreshAllCards);
   });
 
   // Handle manage presets
-  $("#managePresetsBtn").on("click", () => {
+  $("#silly-sim-tracker-settings #managePresetsBtn").on("click", () => {
     showManagePresetsModal(loadTemplate, refreshAllCards);
   });
 
   // Listener for reset defaults button
-  $("#resetDefaultsBtn").on("click", () => {
+  $("#silly-sim-tracker-settings #resetDefaultsBtn").on("click", () => {
     if (
       confirm(
         "Are you sure you want to reset all settings to their default values? This action cannot be undone."
@@ -560,6 +570,10 @@ const initialize_settings_listeners = (
   $manageFieldsButton.on("click", () => {
     createAndShowModal();
   });
+  
+  // Refresh the UI to show current settings
+  console.log(`[SST] [${MODULE_NAME}]`, "Refreshing settings UI with current values");
+  refresh_settings_ui();
 };
 
 const initialize_settings = async () => {
@@ -573,12 +587,18 @@ const initialize_settings = async () => {
   // Now, merge the defaults with any user-saved settings.
   // For first-time users, this will populate the settings with our default values.
   // For existing users, it will preserve their existing settings while adding any new default values.
+  if (!extensionSettings[MODULE_NAME]) {
+    extensionSettings[MODULE_NAME] = {};
+  }
+  
   extensionSettings[MODULE_NAME] = Object.assign(
     {},
     default_settings,
     extensionSettings[MODULE_NAME]
   );
   settings = extensionSettings[MODULE_NAME];
+  
+  console.log(`[SST] [${MODULE_NAME}]`, `Settings initialized:`, settings);
 
   // Ensure that customFields always has the default values if it's empty or missing
   if (!settings.customFields || settings.customFields.length === 0) {
@@ -664,7 +684,10 @@ const load_settings_html_manually = async () => {
   const settingsHtmlPath = `${get_extension_directory()}/settings.html`;
   try {
     const response = await $.get(settingsHtmlPath);
-    $("#extensions_settings2").append(response);
+    // Avoid duplicate injection
+    if (!document.querySelector('#silly-sim-tracker-settings')) {
+      $("#extensions_settings2").append(response);
+    }
     console.log(
       `[SST] [${MODULE_NAME}]`,
       "Settings HTML manually injected into right-side panel."

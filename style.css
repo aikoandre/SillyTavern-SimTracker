@@ -137,8 +137,8 @@ div[mesid] .mes_text #silly-sim-tracker-container {
 /* Global sidebar styles */
 #sst-global-sidebar-left,
 #sst-global-sidebar-right {
-    position: absolute !important;
-    z-index: 999 !important;
+    position: fixed !important;
+    z-index: 9000 !important;
     box-sizing: border-box !important;
     margin: 0 !important;
     padding: 10px !important;
@@ -150,6 +150,7 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     justify-content: center !important;
     visibility: visible !important;
     overflow: visible !important;
+    pointer-events: none !important; /* allow clicks to pass unless on content */
 }
 
 #sst-global-sidebar-left {
@@ -162,28 +163,7 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     align-items: flex-end !important;
 }
 
-/* Ensure proper positioning for tabbed templates */
-#sst-global-sidebar-left .sim-tracker-tabs,
-#sst-global-sidebar-right .sim-tracker-tabs {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    z-index: 20;
-}
-
-#sst-global-sidebar-left .sim-tracker-tabs {
-    left: 0;
-    right: auto;
-}
-
-#sst-global-sidebar-right .sim-tracker-tabs {
-    right: 0;
-    left: auto;
-}
+/* Let templates control their own positioning for tabbed interfaces */
 
 #sst-global-sidebar-left #silly-sim-tracker-container,
 #sst-global-sidebar-right #silly-sim-tracker-container {
@@ -208,6 +188,7 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     display: block !important;
     visibility: visible !important;
     overflow: visible !important;
+    pointer-events: auto !important; /* re-enable interaction for inner content */
 }
 
 /* Ensure sidebar content is visible */
@@ -283,110 +264,25 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     min-width: auto;
 }
 
-/* Tabbed interface styles */
-.sim-tracker-tabs {
-    position: absolute;
-    width: auto;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    z-index: 10; /* Lower z-index so tabs are behind cards */
-    transition: all 0.3s ease-in-out;
+/* Tabbed interface styles - minimal global styles, let templates control positioning */
+.sim-tracker-tab {
+    cursor: pointer !important;
+    pointer-events: auto !important;
 }
 
-.sim-tracker-tab {
-    transition: all 0.3s ease-in-out;
-    cursor: pointer;
-    position: relative;
-    flex-shrink: 0;
-    margin: 0 8px;
-    z-index: 10; /* Lower z-index so tabs are behind cards */
+.sim-tracker-tab:hover {
+    filter: brightness(1.1) !important;
 }
 
 .sim-tracker-tab.active {
     filter: brightness(1.3) !important;
-    z-index: 20 !important; /* Higher z-index for active tab */
-}
-
-.sim-tracker-tab:hover {
-    filter: brightness(1.2) !important;
-}
-
-.sim-tracker-card {
-    transition: all 0.3s ease-in-out;
-    position: absolute !important;
-    opacity: 0;
-    visibility: hidden;
-    z-index: 5;
-}
-
-.sim-tracker-card.active {
-    opacity: 1;
-    visibility: visible;
-    z-index: 30; /* Much higher z-index for active card to cover all tabs */
-}
-
-.sim-tracker-card.sliding-in {
-    opacity: 1;
-    visibility: visible;
-    z-index: 30; /* Much higher z-index for active card to cover all tabs */
-}
-
-.sim-tracker-card.sliding-out {
-    opacity: 0;
-    visibility: hidden;
-    z-index: 5;
 }
 
 .sim-tracker-card.tab-hidden {
-    display: none !important; /* Completely hidden when not active tab */
+    display: none !important;
 }
 
-#sst-global-sidebar-left .sim-tracker-tabs {
-    left: 0;
-    right: auto;
-}
-
-#sst-global-sidebar-left .sim-tracker-tab {
-    transform: translateX(0px); /* Start hidden at the edge of the screen */
-}
-
-#sst-global-sidebar-left .sim-tracker-tab.active {
-    transform: translateX(270px); /* Animate to aligned position (card width) */
-}
-
-#sst-global-sidebar-left .sim-tracker-card {
-    left: 0 !important;
-    transform: translateY(-50%) translateX(-100%) !important;
-}
-
-#sst-global-sidebar-left .sim-tracker-card.active {
-    transform: translateY(-50%) translateX(0) !important;
-}
-
-#sst-global-sidebar-right .sim-tracker-tabs {
-    right: 0;
-    left: auto;
-}
-
-#sst-global-sidebar-right .sim-tracker-tab {
-    transform: translateX(0px); /* Start hidden at the edge of the screen */
-}
-
-#sst-global-sidebar-right .sim-tracker-tab.active {
-    transform: translateX(-270px); /* Animate to aligned position (card width) */
-}
-
-#sst-global-sidebar-right .sim-tracker-card {
-    right: 0 !important;
-    transform: translateY(-50%) translateX(100%) !important;
-}
-
-
-#sst-global-sidebar-right .sim-tracker-card.active {
-    transform: translateY(-50%) translateX(0) !important;
-}
+/* Removed conflicting global sidebar tab styles - let templates control their own positioning */
 
 /* Preset Management Styles */
 .sst-preset-item {

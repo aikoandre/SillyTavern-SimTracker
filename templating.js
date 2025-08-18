@@ -198,7 +198,7 @@ async function populateTemplateDropdown(get_settings) {
 
   console.log(`[SST] [${MODULE_NAME}]`, "Template options to be added to dropdown:", templateOptions);
 
-  const $select = $("#templateFile");
+  const $select = $("#silly-sim-tracker-settings #templateFile");
   const currentSelection = get_settings ? get_settings("templateFile") : null;
 
   $select.empty();
@@ -315,7 +315,7 @@ const loadTemplate = async (get_settings, set_settings) => {
     if (templateFile.startsWith("user-preset-")) {
       try {
         // Get the selected option to retrieve the preset data
-        const $select = $("#templateFile");
+  const $select = $("#silly-sim-tracker-settings #templateFile");
         const $selectedOption = $select.find(`option[value="${templateFile}"]`);
         const presetData = $selectedOption.data("preset");
         
