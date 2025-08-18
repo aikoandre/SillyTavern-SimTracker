@@ -206,6 +206,20 @@ div[mesid] .mes_text #silly-sim-tracker-container {
     box-sizing: border-box !important;
 }
 
+/* Make sure all tabs are visible and properly spaced */
+.sim-tracker-tabs {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    visibility: visible !important;
+}
+
+.sim-tracker-tab {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 /* Custom Fields Dialog Styles */
 #sst-custom-fields-modal {
     max-height: 80vh;
@@ -285,6 +299,8 @@ div[mesid] .mes_text #silly-sim-tracker-container {
 /* Override tab positioning for fixed sidebar containers */
 #sst-global-sidebar-left .sim-tracker-tab {
     transform: translateX(10px) !important; /* Ensure tabs are visible on the left */
+    opacity: 1 !important; /* Ensure tabs are visible */
+    visibility: visible !important;
 }
 
 #sst-global-sidebar-left .sim-tracker-tab.active {
@@ -293,6 +309,8 @@ div[mesid] .mes_text #silly-sim-tracker-container {
 
 #sst-global-sidebar-right .sim-tracker-tab {
     transform: translateX(-10px) !important; /* Ensure tabs are visible on the right */
+    opacity: 1 !important; /* Ensure tabs are visible */
+    visibility: visible !important;
 }
 
 #sst-global-sidebar-right .sim-tracker-tab.active {

@@ -300,6 +300,12 @@ function attachTabEventListeners(sidebarElement) {
       `Found ${tabs.length} tabs and ${cards.length} cards`
     );
 
+    // Debug: Log all tabs found
+    tabs.forEach((tab, index) => {
+      const characterName = tab.querySelector('.tab-initials')?.textContent || 'Unknown';
+      console.log(`[SST] [${MODULE_NAME}]`, `Tab ${index}: Character "${characterName}"`);
+    });
+
     if (tabs.length > 0 && cards.length > 0) {
       // Remove any existing event listeners by cloning elements
       tabs.forEach((tab, index) => {
@@ -327,11 +333,10 @@ function attachTabEventListeners(sidebarElement) {
         c.classList.add("tab-hidden");
       });
 
-      // Activate the first tab and card
-      if (newTabs[firstActiveIndex]) {
+      // Show the first tab and card by default, but don't make it "active" so user can toggle
+      if (newTabs.length > 0 && cards.length > 0) {
+        // Make the first tab active and show its card
         newTabs[firstActiveIndex].classList.add("active");
-      }
-      if (cards[firstActiveIndex]) {
         cards[firstActiveIndex].classList.remove("tab-hidden");
         cards[firstActiveIndex].classList.add("active");
       }
@@ -357,9 +362,21 @@ function attachTabEventListeners(sidebarElement) {
             if (isActive) {
               console.log(
                 `[SST] [${MODULE_NAME}]`,
-                `Tab ${index} is already active`
+                `Tab ${index} is already active, hiding card`
               );
-              return; // Don't do anything if already active
+              // Hide the active card (minimize functionality)
+              tab.classList.remove("active");
+              cards.forEach((card, cardIndex) => {
+                if (cardIndex === index) {
+                  card.classList.remove("active", "sliding-in");
+                  card.classList.add("sliding-out");
+                  setTimeout(() => {
+                    card.classList.add("tab-hidden");
+                    card.classList.remove("sliding-out");
+                  }, 300);
+                }
+              });
+              return;
             }
 
             // Remove active class from all tabs and cards
