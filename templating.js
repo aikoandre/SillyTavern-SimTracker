@@ -81,9 +81,30 @@ Handlebars.registerHelper("tabOffset", function (index) {
 });
 
 Handlebars.registerHelper("initials", function (name) {
-  // Extract the first letter of the name and capitalize it
-  if (!name || name.length === 0) return "?";
-  return name.charAt(0).toUpperCase();
+  // Generate initials for tab badges:
+  // - Single word: first letter (e.g., "James" -> "J")
+  // - Multiple words: first letter of first and last word with dots (e.g., "Momo Yaoyorozu" -> "M.Y.")
+  if (!name || typeof name !== "string") return "?";
+
+  const trimmed = name.trim();
+  if (!trimmed) return "?";
+
+  // Split by whitespace, filter out empties
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+
+  const firstLetter = (word) => {
+    if (!word) return "";
+    // Prefer first alphanumeric; fallback to first char
+    const m = word.match(/[A-Za-z0-9]/);
+    return (m ? m[0] : word.charAt(0)).toUpperCase();
+  };
+
+  const first = firstLetter(parts[0]);
+  if (parts.length >= 2) {
+    const last = firstLetter(parts[parts.length - 1]);
+    return `${first}.${last}.`;
+  }
+  return first;
 });
 
 Handlebars.registerHelper("unless", function (conditional, options) {
