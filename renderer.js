@@ -373,7 +373,7 @@ function attachTabEventListeners(sidebarElement) {
                   setTimeout(() => {
                     card.classList.add("tab-hidden");
                     card.classList.remove("sliding-out");
-                  }, 300);
+                  }, 600);
                 }
               });
               return;
@@ -400,15 +400,15 @@ function attachTabEventListeners(sidebarElement) {
                   setTimeout(() => {
                     card.classList.remove("sliding-in");
                     card.classList.add("active");
-                  }, 50);
+                  }, 100);
                 } else {
                   setTimeout(() => {
                     card.classList.add("tab-hidden");
                     card.classList.remove("sliding-out");
-                  }, 300);
+                  }, 600);
                 }
               });
-            }, 50);
+            }, 100);
 
             console.log(`[SST] [${MODULE_NAME}]`, `Switched to tab ${index}`);
           },
