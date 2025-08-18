@@ -146,6 +146,9 @@ function updateLeftSidebar(content) {
       attachTabEventListeners(leftSidebar);
     }
   }
+  
+  // Clear pending content after applying it
+  pendingLeftSidebarContent = null;
 }
 
 // Helper function to create or update a global right sidebar
@@ -256,6 +259,9 @@ function updateRightSidebar(content) {
       attachTabEventListeners(rightSidebar);
     }
   }
+  
+  // Clear pending content after applying it
+  pendingRightSidebarContent = null;
 }
 
 // Helper function to remove global sidebars
@@ -545,9 +551,6 @@ const renderTracker = (
     }
 
     if (match) {
-      // Set flag to indicate we're processing a message with sim data
-      isGenerationInProgress = true;
-
       // Extract content from the match
       const fullContent = match[0];
       const content = fullContent
@@ -770,8 +773,6 @@ const renderTracker = (
       }
     }
   } catch (error) {
-    // Clear the flag on error
-    isGenerationInProgress = false;
     console.log(
       `[SST] [${MODULE_NAME}]`,
       `A critical error occurred in renderTracker for message ID ${mesId}. Please check the console. Error: ${error.stack}`
