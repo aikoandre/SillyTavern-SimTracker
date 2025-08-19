@@ -834,22 +834,40 @@ const renderTrackerWithoutSim = (
       new RegExp("```" + identifier + "[\\s\\S]*?```", "m")
     );
 
+    // Remove any existing container to prevent duplicates
+    const existingContainer = messageElement.querySelector(
+      `#${CONTAINER_ID}`
+    );
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+
+    let jsonContent = null;
+    let shouldRenderFromMessage = false;
+
     if (dataMatch && dataMatch[0]) {
-      // Remove the container if it already exists to prevent duplication on re-renders
-      const existingContainer = messageElement.querySelector(
-        `#${CONTAINER_ID}`
-      );
-      if (existingContainer) {
-        existingContainer.remove();
-      }
-
-      const jsonContent = dataMatch[0]
+      // This message has sim data
+      jsonContent = dataMatch[0]
         .replace(/```/g, "")
-        .replace(new RegExp(`^${identifier}\s*`), "")
+        .replace(new RegExp(`^${identifier}\\s*`), "")
         .trim();
+      shouldRenderFromMessage = true;
+    } else {
+      // This message doesn't have sim data, but we might need to maintain sidebars
+      // Check if we have lastSimJsonString and if we're using sidebar templates
+      const templatePosition = currentTemplatePosition;
+      if ((templatePosition === "LEFT" || templatePosition === "RIGHT") && lastSimJsonString) {
+        jsonContent = lastSimJsonString;
+        shouldRenderFromMessage = false; // Don't render in message, only update sidebars
+      }
+    }
 
-      // Update lastSimJsonString
-      lastSimJsonString = jsonContent;
+    if (jsonContent) {
+
+      // Update lastSimJsonString only if this message has sim data
+      if (shouldRenderFromMessage) {
+        lastSimJsonString = jsonContent;
+      }
 
       // Remove any preparing text
       const preparingText = messageElement.parentNode.querySelector(
@@ -871,8 +889,10 @@ const renderTrackerWithoutSim = (
           `[SST] [${MODULE_NAME}]`,
           `Failed to parse tracker data in message ID ${mesId}. Error: ${parseError.message}`
         );
-        const errorHtml = `<div style="color: red; font-family: monospace;">[SillySimTracker] Error: Invalid tracker data format in code block.</div>`;
-        messageElement.insertAdjacentHTML("beforeend", errorHtml);
+        if (shouldRenderFromMessage) {
+          const errorHtml = `<div style="color: red; font-family: monospace;">[SillySimTracker] Error: Invalid tracker data format in code block.</div>`;
+          messageElement.insertAdjacentHTML("beforeend", errorHtml);
+        }
         return;
       }
 
@@ -1013,50 +1033,59 @@ const renderTrackerWithoutSim = (
       // Handle different positions
       switch (templatePosition) {
         case "ABOVE":
-          // Insert above the message content (inside the message block)
-          const reasoningElement = messageElement.querySelector(
-            ".mes_reasoning_details"
-          );
-          if (reasoningElement) {
-            // Insert above reasoning details if they exist
-            const finalHtml =
-              compiledWrapperTemplate({ cardsHtml }) +
-              `<hr style="margin-top: 15px; margin-bottom: 20px;">`;
-            reasoningElement.insertAdjacentHTML("beforebegin", finalHtml);
-          } else {
-            // If no reasoning details, insert at the beginning of the message
-            const finalHtml =
-              compiledWrapperTemplate({ cardsHtml }) +
-              `<hr style="margin-top: 15px; margin-bottom: 20px;">`;
-            messageElement.insertAdjacentHTML("afterbegin", finalHtml);
+          // Only render in message if this message has sim data
+          if (shouldRenderFromMessage) {
+            // Insert above the message content (inside the message block)
+            const reasoningElement = messageElement.querySelector(
+              ".mes_reasoning_details"
+            );
+            if (reasoningElement) {
+              // Insert above reasoning details if they exist
+              const finalHtml =
+                compiledWrapperTemplate({ cardsHtml }) +
+                `<hr style="margin-top: 15px; margin-bottom: 20px;">`;
+              reasoningElement.insertAdjacentHTML("beforebegin", finalHtml);
+            } else {
+              // If no reasoning details, insert at the beginning of the message
+              const finalHtml =
+                compiledWrapperTemplate({ cardsHtml }) +
+                `<hr style="margin-top: 15px; margin-bottom: 20px;">`;
+              messageElement.insertAdjacentHTML("afterbegin", finalHtml);
+            }
           }
           break;
         case "LEFT":
-          // Update the global left sidebar with the latest data
+          // Always update the global left sidebar (even if this message doesn't have data)
           updateLeftSidebar(compiledWrapperTemplate({ cardsHtml }));
           break;
         case "RIGHT":
-          // Update the global right sidebar with the latest data
+          // Always update the global right sidebar (even if this message doesn't have data)
           updateRightSidebar(compiledWrapperTemplate({ cardsHtml }));
           break;
         case "MACRO":
-          // For MACRO position, replace the placeholder in the message
-          const placeholder = messageElement.querySelector(
-            "#sst-macro-placeholder"
-          );
-          if (placeholder) {
-            const finalHtml = compiledWrapperTemplate({ cardsHtml });
-            placeholder.insertAdjacentHTML("beforebegin", finalHtml);
-            placeholder.remove();
+          // Only render in message if this message has sim data
+          if (shouldRenderFromMessage) {
+            // For MACRO position, replace the placeholder in the message
+            const placeholder = messageElement.querySelector(
+              "#sst-macro-placeholder"
+            );
+            if (placeholder) {
+              const finalHtml = compiledWrapperTemplate({ cardsHtml });
+              placeholder.insertAdjacentHTML("beforebegin", finalHtml);
+              placeholder.remove();
+            }
           }
           break;
         case "BOTTOM":
         default:
-          // Add a horizontal divider before the cards
-          const finalHtml =
-            `<hr style="margin-top: 15px; margin-bottom: 20px;">` +
-            compiledWrapperTemplate({ cardsHtml });
-          messageElement.insertAdjacentHTML("beforeend", finalHtml);
+          // Only render in message if this message has sim data
+          if (shouldRenderFromMessage) {
+            // Add a horizontal divider before the cards
+            const finalHtml =
+              `<hr style="margin-top: 15px; margin-bottom: 20px;">` +
+              compiledWrapperTemplate({ cardsHtml });
+            messageElement.insertAdjacentHTML("beforeend", finalHtml);
+          }
           break;
       }
     }
