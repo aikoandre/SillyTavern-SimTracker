@@ -506,6 +506,21 @@ const renderTracker = (
     );
     if (!messageElement) return;
 
+    // Proactively clear any lingering preparing text if not actively generating
+    try {
+      if (!getGenerationInProgress()) {
+        const lingeringPreparing = messageElement.parentNode?.querySelector(
+          ".sst-preparing-text"
+        );
+        if (lingeringPreparing) {
+          lingeringPreparing.remove();
+          mesTextsWithPreparingText.delete(messageElement);
+        }
+      }
+    } catch (e) {
+      // Non-fatal cleanup failure; continue rendering
+    }
+
     // Log message element dimensions for debugging layout issues
     const messageRect = messageElement.getBoundingClientRect();
     console.log(
@@ -561,7 +576,7 @@ const renderTracker = (
       // Update lastSimJsonString
       lastSimJsonString = content;
 
-      // Remove any preparing text
+      // Remove any preparing text (in case generation just finished)
       const preparingText = messageElement.parentNode.querySelector(
         ".sst-preparing-text"
       );
@@ -842,6 +857,21 @@ const renderTrackerWithoutSim = (
       existingContainer.remove();
     }
 
+    // Always clear any lingering preparing text for this message when not generating
+    try {
+      if (!getGenerationInProgress()) {
+        const lingeringPreparing = messageElement.parentNode?.querySelector(
+          ".sst-preparing-text"
+        );
+        if (lingeringPreparing) {
+          lingeringPreparing.remove();
+          mesTextsWithPreparingText.delete(messageElement);
+        }
+      }
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+
     let jsonContent = null;
     let shouldRenderFromMessage = false;
 
@@ -862,7 +892,7 @@ const renderTrackerWithoutSim = (
       }
     }
 
-    if (jsonContent) {
+  if (jsonContent) {
 
       // Update lastSimJsonString only if this message has sim data
       if (shouldRenderFromMessage) {
@@ -1030,7 +1060,7 @@ const renderTrackerWithoutSim = (
       // Use the template position from the templating module
       const templatePosition = currentTemplatePosition;
 
-      // Handle different positions
+  // Handle different positions
       switch (templatePosition) {
         case "ABOVE":
           // Only render in message if this message has sim data
@@ -1087,6 +1117,21 @@ const renderTrackerWithoutSim = (
             messageElement.insertAdjacentHTML("beforeend", finalHtml);
           }
           break;
+      }
+    } else {
+      // No content to render; ensure any stale preparing text is gone
+      try {
+        if (!getGenerationInProgress()) {
+          const lingeringPreparing = messageElement.parentNode?.querySelector(
+            ".sst-preparing-text"
+          );
+          if (lingeringPreparing) {
+            lingeringPreparing.remove();
+            mesTextsWithPreparingText.delete(messageElement);
+          }
+        }
+      } catch (e) {
+        // Ignore cleanup errors
       }
     }
   } catch (error) {
