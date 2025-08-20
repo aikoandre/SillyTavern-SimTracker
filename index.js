@@ -502,7 +502,17 @@ characters:
     
     eventSource.on(event_types.CHAT_CHANGED, wrappedRefreshAllCards);
     eventSource.on(event_types.MORE_MESSAGES_LOADED, wrappedRefreshAllCards);
-    eventSource.on(event_types.MESSAGE_UPDATED, wrappedRefreshAllCards);
+    eventSource.on(event_types.MESSAGE_UPDATED, (mesId) => {
+      // Handle MESSAGE_UPDATED more selectively to avoid clearing global sidebars
+      // If mesId is provided, only update that specific message
+      if (mesId !== undefined && mesId !== null) {
+        log(`Message ${mesId} was updated. Re-rendering tracker card.`);
+        renderTrackerWithoutSim(mesId, get_settings, compiledWrapperTemplate, compiledCardTemplate, getReactionEmoji, darkenColor, lastSimJsonString);
+      } else {
+        // If no specific message ID, refresh all cards (e.g., on chat load)
+        wrappedRefreshAllCards();
+      }
+    });
     
     eventSource.on(event_types.MESSAGE_EDITED, (mesId) => {
       log(`Message ${mesId} was edited. Re-rendering tracker card.`);

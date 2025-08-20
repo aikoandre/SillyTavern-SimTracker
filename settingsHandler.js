@@ -215,6 +215,9 @@ const bind_setting = (selector, key, type) => {
       loadTemplate().then(() => {
         refreshAllCards();
       });
+    } else if (key === "hideSimBlocks") {
+      // When hideSimBlocks changes, refresh cards without clearing global sidebars
+      refreshAllCards();
     }
   });
 };

@@ -849,10 +849,8 @@ const renderTrackerWithoutSim = (
       new RegExp("```" + identifier + "[\\s\\S]*?```", "m")
     );
 
-    // Remove any existing container to prevent duplicates
-    const existingContainer = messageElement.querySelector(
-      `#${CONTAINER_ID}`
-    );
+    // Remove any existing container from this specific message to prevent duplicates
+    const existingContainer = messageElement.querySelector(`#${CONTAINER_ID}`);
     if (existingContainer) {
       existingContainer.remove();
     }
@@ -1152,9 +1150,13 @@ const refreshAllCards = (
     "Refreshing all tracker cards on screen."
   );
 
-  // First, remove all existing tracker containers to prevent duplicates
-  document.querySelectorAll(`#${CONTAINER_ID}`).forEach((container) => {
-    container.remove();
+  // Remove existing tracker containers only from inside messages, not from global sidebars
+  // This prevents removing global left/right sidebar content
+  document.querySelectorAll("div#chat .mes").forEach((messageElement) => {
+    const existingContainer = messageElement.querySelector(`#${CONTAINER_ID}`);
+    if (existingContainer) {
+      existingContainer.remove();
+    }
   });
 
   // Get all message divs currently in the chat DOM
