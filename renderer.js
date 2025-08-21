@@ -20,6 +20,25 @@ let isGenerationInProgress = false;
 // Keep track of mesTexts that have preparing text
 const mesTextsWithPreparingText = new Set();
 
+// Ensure progress bar widths are clamped between 0% and 100%
+function clampStatBars(rootElement = document) {
+  try {
+    const fills = rootElement.querySelectorAll('.stat-bar-fill');
+    fills.forEach((el) => {
+      const raw = el.style && el.style.width ? el.style.width : '';
+      const num = parseFloat(raw);
+      if (!isNaN(num)) {
+        const clamped = Math.max(0, Math.min(100, num));
+        if (clamped !== num) {
+          el.style.width = clamped + '%';
+        }
+      }
+    });
+  } catch (e) {
+    // Non-fatal; skip if structure isn't present yet
+  }
+}
+
 // State management functions
 const setGenerationInProgress = (value) => {
   isGenerationInProgress = value;
@@ -127,6 +146,9 @@ function updateLeftSidebar(content) {
     // Add event listeners for tabs (only once when creating)
     attachTabEventListeners(leftSidebar);
 
+  // Clamp any stat bars after content insertion
+  clampStatBars(leftSidebar);
+
     // Debug: Log the final container
     console.log(
       `[SST] [${MODULE_NAME}]`,
@@ -144,6 +166,8 @@ function updateLeftSidebar(content) {
       leftSidebar.innerHTML = content;
       // Re-attach event listeners for updated content
       attachTabEventListeners(leftSidebar);
+  // Clamp any stat bars after content update
+  clampStatBars(leftSidebar);
     }
   }
   
@@ -247,6 +271,9 @@ function updateRightSidebar(content) {
     // Add event listeners for tabs (only once when creating)
     attachTabEventListeners(rightSidebar);
 
+  // Clamp any stat bars after content insertion
+  clampStatBars(rightSidebar);
+
     return verticalContainer;
   } else {
     // Update existing sidebar content and re-attach event listeners
@@ -257,6 +284,8 @@ function updateRightSidebar(content) {
       rightSidebar.innerHTML = content;
       // Re-attach event listeners for updated content
       attachTabEventListeners(rightSidebar);
+  // Clamp any stat bars after content update
+  clampStatBars(rightSidebar);
     }
   }
   
@@ -786,6 +815,9 @@ const renderTracker = (
           messageElement.insertAdjacentHTML("beforeend", finalHtml);
           break;
       }
+
+  // Clamp any stat bars in the message after insertion
+  clampStatBars(messageElement);
     }
   } catch (error) {
     console.log(
@@ -1116,6 +1148,9 @@ const renderTrackerWithoutSim = (
           }
           break;
       }
+
+  // Clamp any stat bars in the message after insertion/update
+  clampStatBars(messageElement);
     } else {
       // No content to render; ensure any stale preparing text is gone
       try {
