@@ -92,7 +92,7 @@ Handlebars.registerHelper("initials", function (name) {
   }
   
   if (nameParts.length > 1) {
-    initials += nameParts[1].charAt(0).toUpperCase() + ".";
+    initials += nameParts[nameParts.length - 1].charAt(0).toUpperCase() + ".";
   }
   
   return initials;
