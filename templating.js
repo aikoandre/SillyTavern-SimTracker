@@ -81,25 +81,28 @@ Handlebars.registerHelper("tabOffset", function (index) {
 });
 
 Handlebars.registerHelper("initials", function (name) {
-  // Extract the first letter of the first name and first letter of the last name (if multiple names)
+  // Extract up to two initials from the name
   if (!name || name.length === 0) return "?";
   
   const nameParts = name.trim().split(/\s+/);
-  if (nameParts.length === 1) {
-    // Single name
-    return nameParts[0].charAt(0).toUpperCase() + ".";
-  } else {
-    // Multiple names - first letter of first name and first letter of last name
-    const firstInitial = nameParts[0].charAt(0).toUpperCase();
-    const lastInitial = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
-    return firstInitial + "." + lastInitial + ".";
+  let initials = "";
+  
+  if (nameParts.length > 0) {
+    initials += nameParts[0].charAt(0).toUpperCase() + ".";
   }
+  
+  if (nameParts.length > 1) {
+    initials += nameParts[1].charAt(0).toUpperCase() + ".";
+  }
+  
+  return initials;
 });
 
 Handlebars.registerHelper("cleanThought", function (thought) {
-  // Remove all * characters from the thought text
+  // Remove all * characters from the thought text and apply italic styling
   if (!thought) return "";
-  return thought.replace(/\*/g, "");
+  const cleaned = String(thought).replace(/\*/g, "").trim();
+  return new Handlebars.SafeString(`<i>${cleaned}</i>`);
 });
 
 Handlebars.registerHelper("unless", function (conditional, options) {
