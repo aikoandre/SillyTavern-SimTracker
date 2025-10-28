@@ -81,9 +81,25 @@ Handlebars.registerHelper("tabOffset", function (index) {
 });
 
 Handlebars.registerHelper("initials", function (name) {
-  // Extract the first letter of the name and capitalize it
+  // Extract the first letter of the first name and first letter of the last name (if multiple names)
   if (!name || name.length === 0) return "?";
-  return name.charAt(0).toUpperCase();
+  
+  const nameParts = name.trim().split(/\s+/);
+  if (nameParts.length === 1) {
+    // Single name
+    return nameParts[0].charAt(0).toUpperCase() + ".";
+  } else {
+    // Multiple names - first letter of first name and first letter of last name
+    const firstInitial = nameParts[0].charAt(0).toUpperCase();
+    const lastInitial = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
+    return firstInitial + "." + lastInitial + ".";
+  }
+});
+
+Handlebars.registerHelper("cleanThought", function (thought) {
+  // Remove all * characters from the thought text
+  if (!thought) return "";
+  return thought.replace(/\*/g, "");
 });
 
 Handlebars.registerHelper("unless", function (conditional, options) {

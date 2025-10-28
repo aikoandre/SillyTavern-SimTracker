@@ -76,7 +76,7 @@
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 15px;
   }
 
   .sim-tracker-cards-wrapper {
@@ -358,9 +358,10 @@
               font-size: 0.95em;
               line-height: 1.4;
               color: rgba(255, 255, 255, 0.85);
+              font-style: italic;
             "
           >
-            {{stats.internal_thought}}
+            {{cleanThought stats.internal_thought}}
           </div>
         </div>
       </div>

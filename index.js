@@ -780,6 +780,7 @@ characters:
     });
     eventSource.on(event_types.MORE_MESSAGES_LOADED, wrappedRefreshAllCards);
     eventSource.on(event_types.MESSAGE_UPDATED, wrappedRefreshAllCards);
+    eventSource.on(event_types.MESSAGE_DELETED, wrappedRefreshAllCards);
     
     eventSource.on(event_types.MESSAGE_EDITED, (mesId) => {
       log(`Message ${mesId} was edited. Re-rendering tracker card.`);
@@ -912,6 +913,29 @@ characters:
         element.remove();
       });
     });
+
+    // Add MutationObserver to detect message deletion from DOM
+    const chatContainer = document.getElementById('chat');
+    if (chatContainer) {
+      const observer = new MutationObserver((mutations) => {
+        let messageRemoved = false;
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            mutation.removedNodes.forEach((node) => {
+              if (node.classList && node.classList.contains('mes')) {
+                messageRemoved = true;
+              }
+            });
+          }
+        });
+        if (messageRemoved) {
+          log("Message removed from DOM, refreshing tracker cards");
+          wrappedRefreshAllCards();
+        }
+      });
+      observer.observe(chatContainer, { childList: true });
+      log("MutationObserver set up to detect message deletion");
+    }
 
     wrappedRefreshAllCards();
     log(`${MODULE_NAME} has been successfully loaded.`);
