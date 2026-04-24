@@ -75,10 +75,11 @@ const default_settings = {
   defaultBgColor: "#6a5acd",
   showThoughtBubble: true,
   customTemplateHtml: "",
-  templateFile: "dating-card-template.json", // Changed to JSON file
+  templateFile: "bento-style-tracker.json", // Changed to JSON file
   templatePosition: "BOTTOM", // Default template position
   datingSimPrompt:
     "Default prompt could not be loaded. Please check file path.",
+  displayInstructionsPrompt: "", // Custom instructions for display methods
   customFields: [...defaultSimFields], // Clone the default fields
   hideSimBlocks: true, // New setting to hide sim blocks in message text
   userPresets: [], // New setting to store user presets
@@ -92,7 +93,13 @@ const default_settings = {
   secondaryLLMTemperature: 0.7, // Temperature for secondary generation
   secondaryLLMTopP: 1, // Top P for secondary generation
   secondaryLLMStreaming: true, // Enable streaming for secondary LLM
+  secondaryLLMUseReverseProxy: true, // Use ST's reverse proxy if configured
   secondaryLLMStripHTML: true, // Strip HTML from context for secondary LLM
+  maxSimBlocksInContext: 3, // Maximum number of sim blocks to include in LLM context (0 = unlimited)
+  retainTrackerCount: 3, // New setting: Number of most recent tracker blocks to retain in context
+  enableInlineTemplates: false, // Enable inline template rendering
+  inlinePacks: [], // Imported inline template packs
+  knownIdentifiers: ["sim"], // List of all known code block identifiers
 };
 
 let settings = {};
@@ -101,6 +108,15 @@ const settings_ui_map = {};
 const get_settings = (key) => settings[key] ?? default_settings[key];
 const set_settings = (key, value) => {
   settings[key] = value;
+
+  // If updating codeBlockIdentifier, add it to knownIdentifiers
+  if (key === "codeBlockIdentifier" && value) {
+    const known = settings.knownIdentifiers || ["sim"];
+    if (!known.includes(value)) {
+      settings.knownIdentifiers = [...known, value];
+    }
+  }
+
   saveSettingsDebounced();
 };
 
@@ -131,7 +147,7 @@ const loadDefaultPromptFromFile = async () => {
 // Function to load the default JSON template
 const loadDefaultTemplate = async () => {
   try {
-    const defaultTemplatePath = `${get_extension_directory()}/tracker-card-templates/dating-card-template.json`;
+    const defaultTemplatePath = `${get_extension_directory()}/tracker-card-templates/bento-style-tracker.json`;
     const defaultTemplate = await $.get(defaultTemplatePath);
     // jQuery may automatically parse JSON responses, so we need to check if it's already an object
     const templateData = typeof defaultTemplate === "string" ? JSON.parse(defaultTemplate) : defaultTemplate;
@@ -141,6 +157,10 @@ const loadDefaultTemplate = async () => {
 
     if (templateData.sysPrompt !== undefined) {
       set_settings("datingSimPrompt", templateData.sysPrompt);
+    }
+
+    if (templateData.displayInstructions !== undefined) {
+      set_settings("displayInstructionsPrompt", templateData.displayInstructions);
     }
 
     if (templateData.customFields !== undefined) {
@@ -185,6 +205,22 @@ const refresh_settings_ui = () => {
       case "textarea":
         element.val(value);
         break;
+    }
+  }
+
+  // If displayInstructionsPrompt is empty, populate from the first enabled inline pack
+  const currentPrompt = get_settings("displayInstructionsPrompt");
+  if (!currentPrompt || currentPrompt.trim() === "") {
+    const inlinePacks = get_settings("inlinePacks") || [];
+    const firstEnabledPack = inlinePacks.find(
+      (pack) => pack.enabled !== false && pack.displayInstructions && pack.displayInstructions.trim() !== ""
+    );
+    if (firstEnabledPack) {
+      const displayEl = settings_ui_map["displayInstructionsPrompt"];
+      if (displayEl) {
+        displayEl[0].val(firstEnabledPack.displayInstructions);
+        set_settings("displayInstructionsPrompt", firstEnabledPack.displayInstructions);
+      }
     }
   }
 };
@@ -239,6 +275,7 @@ const initialize_settings_listeners = (
   bind_setting("#hideSimBlocks", "hideSimBlocks", "boolean");
   bind_setting("#trackerFormat", "trackerFormat", "text");
   bind_setting("#datingSimPrompt", "datingSimPrompt", "textarea");
+  bind_setting("#displayInstructionsPrompt", "displayInstructionsPrompt", "textarea");
   
   // Secondary LLM settings
   bind_setting("#useSecondaryLLM", "useSecondaryLLM", "boolean");
@@ -250,7 +287,74 @@ const initialize_settings_listeners = (
   bind_setting("#secondaryLLMTemperature", "secondaryLLMTemperature", "text");
   bind_setting("#secondaryLLMTopP", "secondaryLLMTopP", "text");
   bind_setting("#secondaryLLMStreaming", "secondaryLLMStreaming", "boolean");
+  bind_setting("#secondaryLLMUseReverseProxy", "secondaryLLMUseReverseProxy", "boolean");
   bind_setting("#secondaryLLMStripHTML", "secondaryLLMStripHTML", "boolean");
+  bind_setting("#maxSimBlocksInContext", "maxSimBlocksInContext", "text");
+  bind_setting("#retainTrackerCount", "retainTrackerCount", "text");
+
+  // Provider-specific UI toggle for secondary LLM
+  const providerPlaceholders = {
+    openai: "gpt-4o-mini",
+    anthropic: "claude-3-5-haiku-latest",
+    openrouter: "openai/gpt-4o-mini",
+    google: "gemini-2.0-flash",
+    chutes: "deepseek-ai/DeepSeek-V3-0324",
+    custom: "model-name",
+  };
+  
+  // Providers that support reverse proxy
+  const reverseProxyProviders = ["openai", "anthropic", "openrouter", "google", "chutes"];
+  
+  const updateSecondaryLLMProviderUI = () => {
+    const provider = get_settings("secondaryLLMAPI") || "openai";
+    const isCustom = provider === "custom";
+    const supportsReverseProxy = reverseProxyProviders.includes(provider);
+    
+    // Show/hide custom endpoint and API key fields
+    const $customFields = $("#sst-custom-api-fields");
+    if ($customFields.length) {
+      if (isCustom) {
+        $customFields.show();
+      } else {
+        $customFields.hide();
+      }
+    }
+    
+    // Show/hide reverse proxy option (only for OpenAI-compatible providers)
+    const $reverseProxyRow = $("#sst-reverse-proxy-row");
+    if ($reverseProxyRow.length) {
+      if (supportsReverseProxy) {
+        $reverseProxyRow.show();
+      } else {
+        $reverseProxyRow.hide();
+      }
+    }
+    
+    // Update hint text
+    const $hint = $("#sst-provider-hint");
+    if ($hint.length) {
+      if (isCustom) {
+        $hint.text("Provide your own endpoint and API key below.");
+      } else {
+        $hint.text("Uses API key from SillyTavern settings.");
+      }
+    }
+    
+    // Update model placeholder
+    const $modelInput = $("#secondaryLLMModel");
+    if ($modelInput.length && providerPlaceholders[provider]) {
+      $modelInput.attr("placeholder", providerPlaceholders[provider]);
+    }
+  };
+  
+  // Initial UI update
+  updateSecondaryLLMProviderUI();
+  
+  // Listen for provider changes
+  $("#secondaryLLMAPI").on("change", updateSecondaryLLMProviderUI);
+
+  // Inline templates setting
+  bind_setting("#enableInlineTemplates", "enableInlineTemplates", "boolean");
 
   // Listener for the default template dropdown
   const $templateSelect = $("#templateFile");
@@ -281,6 +385,10 @@ const initialize_settings_listeners = (
         // Apply other settings if they exist in the preset
         if (presetData.sysPrompt !== undefined) {
           set_settings("datingSimPrompt", presetData.sysPrompt);
+        }
+
+        if (presetData.displayInstructions !== undefined) {
+          set_settings("displayInstructionsPrompt", presetData.displayInstructions);
         }
 
         if (presetData.customFields !== undefined) {
@@ -315,6 +423,10 @@ const initialize_settings_listeners = (
 
           if (templateData.sysPrompt !== undefined) {
             set_settings("datingSimPrompt", templateData.sysPrompt);
+          }
+
+          if (templateData.displayInstructions !== undefined) {
+            set_settings("displayInstructionsPrompt", templateData.displayInstructions);
           }
 
           if (templateData.customFields !== undefined) {
@@ -438,27 +550,27 @@ const initialize_settings_listeners = (
     $("#sst-custom-fields-modal").remove();
 
     // Create modal HTML using SillyTavern's built-in classes with dialog element
+    // We add our own ID/classes to style it while keeping ST behavior
     const modalHtml = `
             <dialog id="sst-custom-fields-modal" class="popup wide_dialogue_popup large_dialogue_popup vertical_scrolling_dialogue_popup popup--animation-fast">
-                <div class="popup-header">
-                    <h3 style="margin: 0; padding: 10px 0;">Manage Custom Fields</h3>
+                <div class="sst-modal-header">
+                    <h3 class="sst-modal-title">Manage Custom Fields</h3>
+                    <button id="sst-modal-close" class="sst-modal-close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
                 </div>
-                <div class="popup-content" style="padding: 15px; flex: 1; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <div style="flex: 1;"></div>
-                        <button id="addCustomFieldBtn" class="menu_button">Add New Field</button>
+                <div class="sst-modal-body">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                        <button id="addCustomFieldBtn" class="sst-btn sst-btn-primary">Add New Field</button>
                     </div>
-                    <div id="customFieldsList" class="sst-fields-container" style="flex: 1; overflow-y: auto;">
+                    <div id="customFieldsList">
                         <!-- Fields will be populated here by JavaScript -->
                     </div>
-                </div>
-                <div class="popup-footer" style="display: flex; justify-content: center; padding: 15px;">
-                    <button id="sst-modal-close" class="menu_button">Close</button>
                 </div>
             </dialog>
         `;
 
-    // Append modal to body
+    // Append modal to body - IMPORTANT: Append to body to respect ST's modal layering
     $("body").append(modalHtml);
 
     // Get references to modal elements
@@ -468,26 +580,156 @@ const initialize_settings_listeners = (
     const $modalClose = $modal.find("#sst-modal-close");
 
     // Create field template
-    const createFieldTemplate = () => {
+    const createFieldTemplate = (fieldType = "scalar") => {
+      const isArray = fieldType === "array";
       return $(`
-                <div class="sst-field-item">
+                <div class="sst-field-item" data-field-type="${fieldType}">
                     <div class="sst-field-header">
-                        <input type="text" class="field-key-display field-key text_pole" placeholder="Field key" style="margin-right: 10px;" />
-                        <div>
-                            <button class="sst-toggle-field menu_button">Expand</button>
-                            <button class="remove-field-btn menu_button" style="margin-left: 5px;">Remove</button>
+                        <input type="text" class="field-key-display sst-input" placeholder="Field key" style="flex: 1;" />
+                        <select class="field-type-select sst-select" style="width: 100px;">
+                            <option value="scalar" ${!isArray ? 'selected' : ''}>Scalar</option>
+                            <option value="array" ${isArray ? 'selected' : ''}>Array</option>
+                        </select>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="sst-toggle-field sst-btn">Expand</button>
+                            <button class="remove-field-btn sst-btn sst-btn-danger">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="sst-field-details" style="display: none; padding: 10px; border-top: 1px solid #444; margin-top: 5px;">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div>
-                                <label>Description for LLM:</label>
-                                <input type="text" class="field-description text_pole" placeholder="Field description" style="width: 100%;" />
+                    <div class="sst-field-details" style="display: none; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px;">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label class="sst-setting-label">Description for LLM</label>
+                            <input type="text" class="field-description sst-input" placeholder="Field description" style="width: 100%;" />
+                        </div>
+                        <div class="sst-array-schema-section" style="display: ${isArray ? 'block' : 'none'}; margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border-left: 3px solid var(--SmartThemeQuoteColor, #6a5acd);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <label class="sst-setting-label" style="margin: 0;">Array Item Schema</label>
+                                <select class="array-item-type sst-select" style="width: 140px;">
+                                    <option value="object">Object Properties</option>
+                                    <option value="string">Simple Strings</option>
+                                </select>
                             </div>
+                            <div class="sst-array-item-fields">
+                                <!-- Array item properties rendered here -->
+                            </div>
+                            <button class="add-array-prop sst-btn sst-btn-secondary" style="margin-top: 8px; width: 100%;">+ Add Property</button>
                         </div>
                     </div>
                 </div>
             `);
+    };
+
+    // Create array property row template
+    const createArrayPropTemplate = (prop = {}) => {
+      return $(`
+                <div class="sst-array-prop-item" style="display: grid; grid-template-columns: 1fr 90px 2fr 32px; gap: 8px; margin-bottom: 8px; align-items: center;">
+                    <input type="text" class="array-prop-key sst-input" placeholder="Property name" value="${prop.key || ''}" />
+                    <select class="array-prop-type sst-select">
+                        <option value="string" ${prop.type === 'string' || !prop.type ? 'selected' : ''}>String</option>
+                        <option value="number" ${prop.type === 'number' ? 'selected' : ''}>Number</option>
+                        <option value="boolean" ${prop.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                    </select>
+                    <input type="text" class="array-prop-desc sst-input" placeholder="Description" value="${prop.description || ''}" />
+                    <button class="remove-array-prop sst-btn sst-btn-danger" style="padding: 6px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+            `);
+    };
+
+    // Helper to render array property fields
+    const renderArrayProps = ($fieldElement, index, fields) => {
+      const field = fields[index];
+      const $propsContainer = $fieldElement.find(".sst-array-item-fields");
+      const $addPropBtn = $fieldElement.find(".add-array-prop");
+      const $itemTypeSelect = $fieldElement.find(".array-item-type");
+
+      $propsContainer.empty();
+
+      // Determine if itemSchema is "string" or an array of objects
+      const isSimpleString = field.itemSchema === "string";
+      $itemTypeSelect.val(isSimpleString ? "string" : "object");
+
+      // Show/hide the add property button and props based on item type
+      if (isSimpleString) {
+        $addPropBtn.hide();
+        $propsContainer.append('<p style="color: var(--sst-text-secondary); font-size: 0.9em; margin: 0;">Array will contain simple string values.</p>');
+      } else {
+        $addPropBtn.show();
+        const itemSchema = Array.isArray(field.itemSchema) ? field.itemSchema : [];
+
+        if (itemSchema.length === 0) {
+          $propsContainer.append('<p style="color: var(--sst-text-secondary); font-size: 0.9em; margin: 0;">No properties defined. Add properties to define the object structure.</p>');
+        } else {
+          itemSchema.forEach((prop, propIndex) => {
+            const $propElement = createArrayPropTemplate(prop);
+
+            // Handle property key change
+            $propElement.find(".array-prop-key").on("input", function () {
+              const newKey = sanitizeFieldKey($(this).val());
+              const updatedFields = [...fields];
+              updatedFields[index].itemSchema[propIndex].key = newKey;
+              set_settings("customFields", updatedFields);
+            });
+
+            // Handle property type change
+            $propElement.find(".array-prop-type").on("change", function () {
+              const newType = $(this).val();
+              const updatedFields = [...fields];
+              updatedFields[index].itemSchema[propIndex].type = newType;
+              set_settings("customFields", updatedFields);
+            });
+
+            // Handle property description change
+            $propElement.find(".array-prop-desc").on("input", function () {
+              const newDesc = $(this).val();
+              const updatedFields = [...fields];
+              updatedFields[index].itemSchema[propIndex].description = newDesc;
+              set_settings("customFields", updatedFields);
+            });
+
+            // Handle remove property
+            $propElement.find(".remove-array-prop").on("click", function () {
+              const updatedFields = [...fields];
+              updatedFields[index].itemSchema.splice(propIndex, 1);
+              set_settings("customFields", updatedFields);
+              renderArrayProps($fieldElement, index, updatedFields);
+            });
+
+            $propsContainer.append($propElement);
+          });
+        }
+      }
+
+      // Handle item type change (object vs string)
+      $itemTypeSelect.off("change").on("change", function () {
+        const newItemType = $(this).val();
+        const updatedFields = [...get_settings("customFields")];
+        if (newItemType === "string") {
+          updatedFields[index].itemSchema = "string";
+        } else {
+          // Convert to object array with empty schema
+          updatedFields[index].itemSchema = [];
+        }
+        set_settings("customFields", updatedFields);
+        renderArrayProps($fieldElement, index, updatedFields);
+      });
+
+      // Handle add property button
+      $addPropBtn.off("click").on("click", function () {
+        const updatedFields = [...get_settings("customFields")];
+        if (!Array.isArray(updatedFields[index].itemSchema)) {
+          updatedFields[index].itemSchema = [];
+        }
+        updatedFields[index].itemSchema.push({
+          key: "new_prop",
+          type: "string",
+          description: ""
+        });
+        set_settings("customFields", updatedFields);
+        renderArrayProps($fieldElement, index, updatedFields);
+      });
     };
 
     // Function to render the list of fields
@@ -495,7 +737,8 @@ const initialize_settings_listeners = (
       const fields = get_settings("customFields") || [];
       $fieldsContainer.empty();
       fields.forEach((field, index) => {
-        const $fieldElement = createFieldTemplate();
+        const fieldType = field.type || "scalar";
+        const $fieldElement = createFieldTemplate(fieldType);
 
         // Set values in the key input (which is now at the top level)
         const fieldKey = field.key || "";
@@ -519,6 +762,31 @@ const initialize_settings_listeners = (
             updatedFields[index].description = newValue;
             set_settings("customFields", updatedFields);
           });
+
+        // Handle type selector change
+        $fieldElement.find(".field-type-select").on("change", function () {
+          const newType = $(this).val();
+          const updatedFields = [...fields];
+          updatedFields[index].type = newType;
+
+          // Initialize itemSchema if switching to array
+          if (newType === "array" && !updatedFields[index].itemSchema) {
+            updatedFields[index].itemSchema = [];
+          }
+          // Remove itemSchema if switching to scalar
+          if (newType === "scalar") {
+            delete updatedFields[index].itemSchema;
+            delete updatedFields[index].type; // Remove type property for scalar (backward compat)
+          }
+
+          set_settings("customFields", updatedFields);
+          renderFields(); // Re-render to update UI
+        });
+
+        // Render array properties if this is an array field
+        if (fieldType === "array") {
+          renderArrayProps($fieldElement, index, fields);
+        }
 
         $fieldElement.find(".remove-field-btn").on("click", function () {
           const updatedFields = fields.filter((_, i) => i !== index);
@@ -569,7 +837,7 @@ const initialize_settings_listeners = (
       }
     });
 
-    // Also close when clicking on the backdrop (dialog native behavior)
+    // Close when clicking on the backdrop
     $modal.on("click", function (e) {
       if (e.target === this) {
         $modal.remove();
@@ -578,7 +846,7 @@ const initialize_settings_listeners = (
 
     // Render fields and show modal
     renderFields();
-    $modal[0].showModal(); // Use the native dialog showModal() method
+    $modal[0].showModal();
   };
 
   // Manage fields button opens the modal
@@ -618,7 +886,7 @@ const initialize_settings = async () => {
   // For first-time users, auto-load the default JSON template
   if (!extensionSettings[MODULE_NAME]) {
     try {
-      const defaultTemplatePath = `${get_extension_directory()}/tracker-card-templates/dating-card-template.json`;
+      const defaultTemplatePath = `${get_extension_directory()}/tracker-card-templates/bento-style-tracker.json`;
       const defaultTemplate = await $.get(defaultTemplatePath);
       // jQuery may automatically parse JSON responses, so we need to check if it's already an object
       const templateData = typeof defaultTemplate === "string" ? JSON.parse(defaultTemplate) : defaultTemplate;
@@ -628,6 +896,10 @@ const initialize_settings = async () => {
 
       if (templateData.sysPrompt !== undefined) {
         settings.datingSimPrompt = templateData.sysPrompt;
+      }
+
+      if (templateData.displayInstructions !== undefined) {
+        settings.displayInstructionsPrompt = templateData.displayInstructions;
       }
 
       if (templateData.customFields !== undefined) {
@@ -646,9 +918,57 @@ const initialize_settings = async () => {
       );
     }
   } else {
-    // For existing users, if they have selected a default template, load its settings
+    // For existing users, load the selected template's settings
     const selectedTemplate = settings.templateFile;
-    if (selectedTemplate && selectedTemplate.endsWith(".json") && !selectedTemplate.startsWith("user-preset-")) {
+
+    // Handle user presets (stored in userPresets array)
+    if (selectedTemplate && selectedTemplate.startsWith("user-preset-")) {
+      const userPresets = settings.userPresets || [];
+      // Extract preset index from templateFile (format: "user-preset-0", "user-preset-1", etc.)
+      const presetIndex = parseInt(selectedTemplate.replace("user-preset-", ""));
+      const preset = (presetIndex >= 0 && presetIndex < userPresets.length) ? userPresets[presetIndex] : null;
+
+      if (preset) {
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
+          `Loading user preset settings: ${preset.templateName || `Preset ${presetIndex}`}`
+        );
+
+        // Apply the preset settings
+        if (preset.htmlTemplate) {
+          settings.customTemplateHtml = unescapeHtml(preset.htmlTemplate);
+        }
+
+        if (preset.sysPrompt !== undefined) {
+          settings.datingSimPrompt = preset.sysPrompt;
+        }
+
+        if (preset.displayInstructions !== undefined) {
+          settings.displayInstructionsPrompt = preset.displayInstructions;
+        }
+
+        if (preset.customFields !== undefined) {
+          settings.customFields = preset.customFields;
+        }
+
+        if (preset.extSettings) {
+          Object.keys(preset.extSettings).forEach((key) => {
+            // Don't overwrite the templateFile setting with the one from extSettings
+            // as it refers to the HTML template file, not the JSON preset file
+            if (key !== "templateFile") {
+              settings[key] = preset.extSettings[key];
+            }
+          });
+        }
+      } else {
+        console.log(
+          `[SST] [${MODULE_NAME}]`,
+          `User preset at index ${presetIndex} not found. This may happen if the preset was deleted.`
+        );
+      }
+    }
+    // Handle default templates (JSON files in tracker-card-templates folder)
+    else if (selectedTemplate && selectedTemplate.endsWith(".json")) {
       try {
         const defaultTemplatePath = `${get_extension_directory()}/tracker-card-templates/${selectedTemplate}`;
         const defaultTemplate = await $.get(defaultTemplatePath);
@@ -660,6 +980,10 @@ const initialize_settings = async () => {
 
         if (templateData.sysPrompt !== undefined) {
           settings.datingSimPrompt = templateData.sysPrompt;
+        }
+
+        if (templateData.displayInstructions !== undefined) {
+          settings.displayInstructionsPrompt = templateData.displayInstructions;
         }
 
         if (templateData.customFields !== undefined) {
@@ -722,38 +1046,47 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
   // Create modal HTML using SillyTavern's built-in classes with dialog element
   const modalHtml = `
     <dialog id="sst-export-preset-modal" class="popup wide_dialogue_popup large_dialogue_popup vertical_scrolling_dialogue_popup popup--animation-fast">
-      <div class="popup-header">
-        <h3 style="margin: 0; padding: 10px 0;">Export Template Preset</h3>
-      </div>
-      <div class="popup-content" style="padding: 15px; flex: 1; display: flex; flex-direction: column;">
-        <div style="margin-bottom: 15px;">
-          <label for="exportTemplateName">Template Name:</label>
-          <input type="text" id="exportTemplateName" class="text_pole" style="width: 100%;" />
+        <div class="sst-modal-header">
+          <h3 class="sst-modal-title">Export Template Preset</h3>
+          <button id="sst-modal-close" class="sst-modal-close">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
-        <div style="margin-bottom: 15px;">
-          <label for="exportTemplateAuthor">Author:</label>
-          <input type="text" id="exportTemplateAuthor" class="text_pole" style="width: 100%;" />
+        <div class="sst-modal-body">
+          <div style="margin-bottom: 15px;">
+            <label class="sst-setting-label" for="exportTemplateName">Template Name</label>
+            <input type="text" id="exportTemplateName" class="sst-input" style="width: 100%;" />
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="sst-setting-label" for="exportTemplateAuthor">Author</label>
+            <input type="text" id="exportTemplateAuthor" class="sst-input" style="width: 100%;" />
+          </div>
+          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <label class="sst-setting-label" style="margin: 0;">Include System Prompt</label>
+            <label class="sst-toggle">
+               <input type="checkbox" id="exportIncludeSysPrompt" checked />
+               <span class="sst-slider"></span>
+            </label>
+          </div>
+          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <label class="sst-setting-label" style="margin: 0;">Include Custom Fields</label>
+            <label class="sst-toggle">
+               <input type="checkbox" id="exportIncludeCustomFields" checked />
+               <span class="sst-slider"></span>
+            </label>
+          </div>
+          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <label class="sst-setting-label" style="margin: 0;">Include Extension Settings</label>
+            <label class="sst-toggle">
+               <input type="checkbox" id="exportIncludeSettings" checked />
+               <span class="sst-slider"></span>
+            </label>
+          </div>
         </div>
-        <div style="margin-bottom: 15px;">
-          <label>
-            <input type="checkbox" id="exportIncludeSysPrompt" checked /> Include System Prompt
-          </label>
+        <div class="sst-modal-footer">
+          <button id="sst-export-preset-cancel" class="sst-btn">Cancel</button>
+          <button id="sst-export-preset-confirm" class="sst-btn sst-btn-primary">Export</button>
         </div>
-        <div style="margin-bottom: 15px;">
-          <label>
-            <input type="checkbox" id="exportIncludeCustomFields" checked /> Include Custom Fields
-          </label>
-        </div>
-        <div style="margin-bottom: 15px;">
-          <label>
-            <input type="checkbox" id="exportIncludeSettings" checked /> Include Extension Settings
-          </label>
-        </div>
-      </div>
-      <div class="popup-footer" style="display: flex; justify-content: center; padding: 15px; gap: 10px;">
-        <button id="sst-export-preset-confirm" class="menu_button">Export</button>
-        <button id="sst-export-preset-cancel" class="menu_button">Cancel</button>
-      </div>
     </dialog>
   `;
 
@@ -769,6 +1102,7 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
   const $includeSettings = $modal.find("#exportIncludeSettings");
   const $confirmBtn = $modal.find("#sst-export-preset-confirm");
   const $cancelBtn = $modal.find("#sst-export-preset-cancel");
+  const $closeBtn = $modal.find("#sst-modal-close");
 
   // Pre-fill modal with current settings
   let templateName = "My Template";
@@ -777,9 +1111,6 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
 
   $templateName.val(templateName);
   $templateAuthor.val(templateAuthor);
-
-  // Show modal
-  $modal[0].showModal();
 
   // Handle confirm button
   $confirmBtn.off("click").on("click", async () => {
@@ -797,6 +1128,7 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
       // Conditionally add other components
       if ($includeSysPrompt.is(":checked")) {
         preset.sysPrompt = get_settings("datingSimPrompt") || "";
+        preset.displayInstructions = get_settings("displayInstructionsPrompt") || "";
       }
 
       if ($includeCustomFields.is(":checked")) {
@@ -836,7 +1168,6 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
       URL.revokeObjectURL(url);
 
       toastr.success(`Preset "${preset.templateName}" exported successfully!`);
-      $modal[0].close();
       $modal.remove();
     } catch (error) {
       console.error(`[SST] [${MODULE_NAME}]`, "Error exporting preset:", error);
@@ -844,32 +1175,29 @@ const handlePresetExport = (loadTemplate, refreshAllCards) => {
     }
   });
 
-  // Handle cancel button
-  $cancelBtn.off("click").on("click", () => {
-    $modal[0].close();
+  // Handle cancel & close buttons
+  const closeModal = () => {
     $modal.remove();
-  });
+  };
+
+  $cancelBtn.off("click").on("click", closeModal);
+  $closeBtn.off("click").on("click", closeModal);
 
   // Close modal with Escape key
-  $modal.off("keydown").on("keydown", function (e) {
+  $modal.on("keydown", function (e) {
     if (e.key === "Escape") {
-      $modal[0].close();
-      $modal.remove();
+      closeModal();
     }
   });
 
   // Close when clicking on backdrop
-  $modal.off("click").on("click", function (e) {
+  $modal.on("click", function (e) {
     if (e.target === this) {
-      $modal[0].close();
-      $modal.remove();
+      closeModal();
     }
   });
-  
-  // Also remove the modal when it's closed
-  $modal.off("close").on("close", function () {
-    $modal.remove();
-  });
+
+  $modal[0].showModal();
 };
 
 // Function to handle preset import
@@ -883,46 +1211,76 @@ const handlePresetImport = (event, loadTemplate, refreshAllCards) => {
       const content = e.target.result;
       const preset = JSON.parse(content);
 
-      // Validate preset structure
-      if (!preset.htmlTemplate) {
-        throw new Error("Invalid preset file: Missing HTML template");
+      // Check if this is an inline template pack (has inlineTemplates array with items)
+      const isPack = preset.inlineTemplates && Array.isArray(preset.inlineTemplates) && preset.inlineTemplates.length > 0;
+
+      if (isPack) {
+        // This is a pack - store it in inlinePacks
+        const inlinePacks = get_settings("inlinePacks") || [];
+        
+        // Check if pack with same name already exists
+        const existingPackIndex = inlinePacks.findIndex(p => p.templateName === preset.templateName);
+        if (existingPackIndex >= 0) {
+          if (!confirm(`A pack named "${preset.templateName}" already exists. Replace it?`)) {
+            event.target.value = "";
+            return;
+          }
+          inlinePacks[existingPackIndex] = { ...preset, enabled: true };
+        } else {
+          inlinePacks.push({ ...preset, enabled: true });
+        }
+        
+        set_settings("inlinePacks", inlinePacks);
+        
+        toastr.success(
+          `Inline template pack "${preset.templateName || "Unnamed"}" imported successfully!`
+        );
+      } else {
+        // This is a regular preset - validate it has htmlTemplate
+        if (!preset.htmlTemplate) {
+          throw new Error("Invalid preset file: Missing HTML template");
+        }
+
+        // Apply the preset
+        set_settings("customTemplateHtml", unescapeHtml(preset.htmlTemplate));
+
+        if (preset.sysPrompt !== undefined) {
+          set_settings("datingSimPrompt", preset.sysPrompt);
+        }
+
+        if (preset.displayInstructions !== undefined) {
+          set_settings("displayInstructionsPrompt", preset.displayInstructions);
+        }
+
+        if (preset.customFields !== undefined) {
+          set_settings("customFields", preset.customFields);
+        }
+
+        if (preset.extSettings) {
+          Object.keys(preset.extSettings).forEach((key) => {
+            set_settings(key, preset.extSettings[key]);
+          });
+        }
+
+        // Add to user presets
+        const userPresets = get_settings("userPresets") || [];
+        userPresets.push(preset);
+        set_settings("userPresets", userPresets);
+
+        // Reload template and refresh cards
+        await loadTemplate();
+        refreshAllCards();
+
+        // Refresh UI to reflect imported preset values (e.g., displayInstructionsPrompt)
+        refresh_settings_ui();
+
+        // Repopulate template dropdown to include the new preset
+        await populateTemplateDropdown(get_settings);
+
+        toastr.success(
+          `Preset "${preset.templateName || "Unnamed"}" imported successfully!`
+        );
       }
-
-      // Apply HTML template, unescaping if needed
-      set_settings("customTemplateHtml", unescapeHtml(preset.htmlTemplate));
-
-      // Apply system prompt if included
-      if (preset.sysPrompt !== undefined) {
-        set_settings("datingSimPrompt", preset.sysPrompt);
-      }
-
-      // Apply custom fields if included
-      if (preset.customFields !== undefined) {
-        set_settings("customFields", preset.customFields);
-      }
-
-      // Apply extension settings if included
-      if (preset.extSettings) {
-        Object.keys(preset.extSettings).forEach((key) => {
-          set_settings(key, preset.extSettings[key]);
-        });
-      }
-
-      // Add to user presets
-      const userPresets = get_settings("userPresets") || [];
-      userPresets.push(preset);
-      set_settings("userPresets", userPresets);
-
-      // Reload template and refresh cards
-      await loadTemplate();
-      refreshAllCards();
-
-      // Repopulate template dropdown to include the new preset
-      await populateTemplateDropdown(get_settings);
-
-      toastr.success(
-        `Preset "${preset.templateName || "Unnamed"}" imported successfully!`
-      );
     } catch (error) {
       console.error(`[SST] [${MODULE_NAME}]`, "Error importing preset:", error);
       toastr.error(`Failed to import preset: ${error.message}`);
@@ -945,17 +1303,24 @@ const showManagePresetsModal = async (loadTemplate, refreshAllCards) => {
   // Create modal HTML using SillyTavern's built-in classes with dialog element
   const modalHtml = `
     <dialog id="sst-manage-presets-modal" class="popup wide_dialogue_popup large_dialogue_popup vertical_scrolling_dialogue_popup popup--animation-fast">
-      <div class="popup-header">
-        <h3 style="margin: 0; padding: 10px 0;">Manage Presets</h3>
-      </div>
-      <div class="popup-content" style="padding: 15px; flex: 1; display: flex; flex-direction: column;">
-        <div id="userPresetsList" style="flex: 1; overflow-y: auto;">
-          <!-- User presets will be populated here -->
+        <div class="sst-modal-header">
+          <h3 class="sst-modal-title">Manage Presets & Packs</h3>
+          <button id="sst-modal-close" class="sst-modal-close">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
-      </div>
-      <div class="popup-footer" style="display: flex; justify-content: center; padding: 15px;">
-        <button id="sst-manage-presets-close" class="menu_button">Close</button>
-      </div>
+        <div class="sst-modal-body">
+          <div class="sst-tabs">
+            <div id="sst-tab-presets" class="sst-tab active">Presets</div>
+            <div id="sst-tab-packs" class="sst-tab">Template Packs</div>
+          </div>
+          <div id="userPresetsList" style="flex: 1; overflow-y: auto;">
+            <!-- User presets will be populated here -->
+          </div>
+          <div id="inlinePacksList" style="flex: 1; overflow-y: auto; display: none;">
+            <!-- Inline packs will be populated here -->
+          </div>
+        </div>
     </dialog>
   `;
 
@@ -964,28 +1329,48 @@ const showManagePresetsModal = async (loadTemplate, refreshAllCards) => {
 
   const $modal = $("#sst-manage-presets-modal");
   const $presetsList = $modal.find("#userPresetsList");
-  const $closeBtn = $modal.find("#sst-manage-presets-close");
+  const $packsList = $modal.find("#inlinePacksList");
+  const $closeBtn = $modal.find("#sst-modal-close");
+  const $tabPresets = $modal.find("#sst-tab-presets");
+  const $tabPacks = $modal.find("#sst-tab-packs");
+
+  // Tab switching
+  $tabPresets.on("click", () => {
+    $tabPresets.addClass("active");
+    $tabPacks.removeClass("active");
+    $presetsList.show();
+    $packsList.hide();
+  });
+
+  $tabPacks.on("click", () => {
+    $tabPacks.addClass("active");
+    $tabPresets.removeClass("active");
+    $packsList.show();
+    $presetsList.hide();
+  });
 
   // Populate the presets list
   const userPresets = get_settings("userPresets") || [];
   $presetsList.empty();
 
   if (userPresets.length === 0) {
-    $presetsList.append("<p>No user presets found.</p>");
+    $presetsList.append("<p style='color: var(--sst-text-secondary); text-align: center; margin-top: 20px;'>No tracker card presets found.</p>");
   } else {
     userPresets.forEach((preset, index) => {
       const presetElement = $(`
-          <div class="sst-preset-item" style="margin-bottom: 15px; padding: 10px; border: 1px solid #444; border-radius: 8px;">
+          <div class="sst-field-item">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong>${
+                <strong style="display: block; color: var(--sst-text-primary); margin-bottom: 2px;">${
                   preset.templateName || `User Preset ${index + 1}`
                 }</strong>
-                <div>by ${preset.templateAuthor || "Unknown"}</div>
+                <div style="font-size: 0.85em; color: var(--sst-text-secondary);">by ${preset.templateAuthor || "Unknown"}</div>
               </div>
-              <div>
-                <button class="sst-apply-preset menu_button" data-index="${index}" style="margin-right: 5px;">Apply</button>
-                <button class="sst-delete-preset menu_button" data-index="${index}">Delete</button>
+              <div style="display: flex; gap: 8px;">
+                <button class="sst-apply-preset sst-btn" data-index="${index}">Apply</button>
+                <button class="sst-delete-preset sst-btn sst-btn-danger" data-index="${index}">
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -1006,6 +1391,10 @@ const showManagePresetsModal = async (loadTemplate, refreshAllCards) => {
           set_settings("datingSimPrompt", preset.sysPrompt);
         }
 
+        if (preset.displayInstructions !== undefined) {
+          set_settings("displayInstructionsPrompt", preset.displayInstructions);
+        }
+
         if (preset.customFields !== undefined) {
           set_settings("customFields", preset.customFields);
         }
@@ -1020,10 +1409,12 @@ const showManagePresetsModal = async (loadTemplate, refreshAllCards) => {
         await loadTemplate();
         refreshAllCards();
 
+        // Refresh UI to reflect applied preset values (e.g., displayInstructionsPrompt)
+        refresh_settings_ui();
+
         toastr.success(
           `Preset "${preset.templateName || "Unnamed"}" applied successfully!`
         );
-        $modal[0].close();
         $modal.remove();
       }
     });
@@ -1054,35 +1445,102 @@ const showManagePresetsModal = async (loadTemplate, refreshAllCards) => {
     });
   }
 
-  // Show modal
-  $modal[0].showModal();
+  // Populate the packs list
+  const inlinePacks = get_settings("inlinePacks") || [];
+  $packsList.empty();
+
+  if (inlinePacks.length === 0) {
+    $packsList.append("<p style='color: var(--sst-text-secondary); text-align: center; margin-top: 20px;'>No inline template packs found. Import a pack using the 'Import Preset' button.</p>");
+  } else {
+    inlinePacks.forEach((pack, index) => {
+      const inlineCount = pack.inlineTemplates ? pack.inlineTemplates.length : 0;
+      const isEnabled = pack.enabled !== false; // Default to true
+      
+      const packElement = $(`
+          <div class="sst-field-item" style="${!isEnabled ? 'opacity: 0.6;' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="flex: 1;">
+                <strong style="display: block; color: var(--sst-text-primary); margin-bottom: 2px;">${pack.templateName || `Pack ${index + 1}`}</strong>
+                <div style="font-size: 0.85em; color: var(--sst-text-secondary);">by ${pack.templateAuthor || "Unknown"}</div>
+                <div class="sst-tag" style="display: inline-block; margin-left: 0; margin-top: 4px;">${inlineCount} template${inlineCount !== 1 ? 's' : ''}</div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <label class="sst-toggle">
+                  <input type="checkbox" class="sst-pack-toggle" data-index="${index}" ${isEnabled ? 'checked' : ''} />
+                  <span class="sst-slider"></span>
+                </label>
+                <button class="sst-delete-pack sst-btn sst-btn-danger" data-index="${index}">
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `);
+      $packsList.append(packElement);
+    });
+
+    // Add event listeners for pack toggles
+    $packsList.find(".sst-pack-toggle").on("change", function () {
+      const index = $(this).data("index");
+      const isEnabled = $(this).is(":checked");
+
+      inlinePacks[index].enabled = isEnabled;
+      set_settings("inlinePacks", inlinePacks);
+
+      // Update the opacity
+      $(this).closest(".sst-field-item").css("opacity", isEnabled ? "1" : "0.6");
+
+      // Refresh display prompt in case it should update from packs
+      refresh_settings_ui();
+
+      toastr.info(`Pack "${inlinePacks[index].templateName}" ${isEnabled ? 'enabled' : 'disabled'}`);
+    });
+
+    // Add event listeners for delete buttons
+    $packsList.find(".sst-delete-pack").on("click", function () {
+      const index = $(this).data("index");
+
+      if (
+        confirm(
+          `Are you sure you want to remove the pack "${
+            inlinePacks[index].templateName || `Pack ${index + 1}`
+          }"?`
+        )
+      ) {
+        // Remove the pack
+        inlinePacks.splice(index, 1);
+        set_settings("inlinePacks", inlinePacks);
+
+        // Show the modal again to refresh the list
+        showManagePresetsModal(loadTemplate, refreshAllCards);
+
+        toastr.success("Pack removed successfully!");
+      }
+    });
+  }
 
   // Handle close button
-  $closeBtn.off("click").on("click", () => {
-    $modal[0].close();
+  const closeModal = () => {
     $modal.remove();
-  });
+  };
+
+  $closeBtn.off("click").on("click", closeModal);
 
   // Close modal with Escape key
-  $modal.off("keydown").on("keydown", function (e) {
+  $modal.on("keydown", function (e) {
     if (e.key === "Escape") {
-      $modal[0].close();
-      $modal.remove();
+      closeModal();
     }
   });
 
   // Close when clicking on backdrop
-  $modal.off("click").on("click", function (e) {
+  $modal.on("click", function (e) {
     if (e.target === this) {
-      $modal[0].close();
-      $modal.remove();
+      closeModal();
     }
   });
-  
-  // Also remove the modal when it's closed
-  $modal.off("close").on("close", function () {
-    $modal.remove();
-  });
+
+  $modal[0].showModal();
 };
 
 // Export functions and variables

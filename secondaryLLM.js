@@ -6,6 +6,101 @@ import { generateTrackerBlock } from "./formatUtils.js";
 const MODULE_NAME = "silly-sim-tracker";
 
 /**
+ * Secret key identifiers used by SillyTavern's secrets system
+ * These map to the keys stored via /api/secrets/find
+ */
+const SECRET_KEYS = {
+  OPENAI: "api_key_openai",
+  CLAUDE: "api_key_claude",
+  OPENROUTER: "api_key_openrouter",
+  MAKERSUITE: "api_key_makersuite", // Google AI Studio
+  CHUTES: "api_key_chutes",
+};
+
+/**
+ * Provider configuration for secondary LLM
+ * Each provider has its endpoint, secret key reference, and default model placeholder
+ */
+export const PROVIDER_CONFIG = {
+  openai: {
+    name: "OpenAI",
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    secretKey: SECRET_KEYS.OPENAI,
+    placeholder: "gpt-4o-mini",
+    format: "openai",
+    useProxy: false,
+  },
+  anthropic: {
+    name: "Anthropic Claude",
+    endpoint: "https://api.anthropic.com/v1/messages",
+    secretKey: SECRET_KEYS.CLAUDE,
+    placeholder: "claude-3-5-haiku-latest",
+    format: "anthropic",
+    useProxy: false,
+  },
+  openrouter: {
+    name: "OpenRouter",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    secretKey: SECRET_KEYS.OPENROUTER,
+    placeholder: "openai/gpt-4o-mini",
+    format: "openai",
+    useProxy: false,
+  },
+  google: {
+    name: "Google AI Studio",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
+    secretKey: SECRET_KEYS.MAKERSUITE,
+    placeholder: "gemini-2.0-flash",
+    format: "google",
+    useProxy: false,
+  },
+  chutes: {
+    name: "Chutes.ai",
+    endpoint: "https://llm.chutes.ai/v1/chat/completions",
+    secretKey: SECRET_KEYS.CHUTES,
+    placeholder: "deepseek-ai/DeepSeek-V3-0324",
+    format: "openai",
+    useProxy: false,
+  },
+  custom: {
+    name: "Custom (OpenAI-Compatible)",
+    endpoint: "", // User provides
+    secretKey: null, // User provides their own key
+    placeholder: "model-name",
+    format: "openai",
+    useProxy: false,
+  },
+};
+
+/**
+ * Fetch an API key from SillyTavern's secrets system
+ * @param {string} secretKey - The secret key identifier (e.g., "api_key_openai")
+ * @returns {Promise<string|null>} The API key or null if not found
+ */
+async function fetchSecretKey(secretKey) {
+  if (!secretKey) return null;
+  
+  try {
+    const response = await fetch("/api/secrets/find", {
+      method: "POST",
+      headers: getRequestHeaders(),
+      body: JSON.stringify({ key: secretKey }),
+    });
+    
+    if (!response.ok) {
+      console.warn(`[SST] [${MODULE_NAME}]`, `Failed to fetch secret key: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data.value || null;
+  } catch (error) {
+    console.error(`[SST] [${MODULE_NAME}]`, "Error fetching secret key:", error);
+    return null;
+  }
+}
+
+/**
  * Get the request headers for SillyTavern API calls
  */
 function getRequestHeaders() {
@@ -25,58 +120,226 @@ function getCurrentCompletionEndpoint() {
 }
 
 /**
+ * Check if a string is a valid URL
+ */
+function isValidUrl(str) {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get reverse proxy settings from SillyTavern
+ * Returns { url, password } if configured, null otherwise
+ */
+function getReverseProxySettings() {
+  try {
+    const context = SillyTavern.getContext();
+    const oaiSettings = context.chatCompletionSettings;
+    
+    if (oaiSettings?.reverse_proxy && isValidUrl(oaiSettings.reverse_proxy)) {
+      return {
+        url: oaiSettings.reverse_proxy,
+        password: oaiSettings.proxy_password || "",
+      };
+    }
+  } catch (error) {
+    console.warn(`[SST] [${MODULE_NAME}]`, "Could not get reverse proxy settings:", error);
+  }
+  return null;
+}
+
+/**
  * Send a raw completion request to generate tracker data
- * Based on the example-send.js implementation
- * Supports both streaming and non-streaming responses
+ * Supports both SillyTavern proxy and direct API calls with secret key reuse
  */
 async function sendRawCompletionRequest({
   model,
   prompt,
   temperature = 0.7,
-  api = "openai",
+  provider = "openai",
   endpoint = null,
   apiKey = null,
   extra = {},
   streaming = true,
+  useReverseProxy = true, // New option to respect ST's reverse proxy setting
 }) {
-  let url = getCurrentCompletionEndpoint();
-  let headers = getRequestHeaders();
-
-  let body = {
-    messages: [{ role: "user", content: prompt }],
-    model,
-    temperature,
-    chat_completion_source: api,
-    stream: streaming, // Use streaming parameter
-    ...extra,
-  };
-
-  // Handle full-manual configuration with direct endpoint calls
-  if (api === "full-manual" && endpoint && apiKey) {
+  const providerConfig = PROVIDER_CONFIG[provider];
+  
+  // Determine if we're using a known provider with ST secrets
+  const isKnownProvider = provider !== "custom" && providerConfig?.secretKey;
+  
+  // Check for reverse proxy configuration
+  const reverseProxy = useReverseProxy ? getReverseProxySettings() : null;
+  
+  let url;
+  let headers;
+  let body;
+  let resolvedApiKey = apiKey;
+  
+  // For known providers, fetch the API key from ST secrets
+  if (isKnownProvider) {
+    resolvedApiKey = await fetchSecretKey(providerConfig.secretKey);
+    if (!resolvedApiKey) {
+      throw new Error(`No API key found for ${providerConfig.name}. Please configure it in SillyTavern's API settings.`);
+    }
+  }
+  
+  // Handle custom provider with user-provided endpoint and key
+  if (provider === "custom") {
+    if (!endpoint || !apiKey) {
+      throw new Error("Custom provider requires both endpoint and API key to be configured.");
+    }
     url = endpoint;
     headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     };
-    // For direct endpoint calls, use standard OpenAI-compatible format
     body = {
       model,
       messages: [{ role: "user", content: prompt }],
       temperature,
-      stream: streaming, // Use streaming parameter
+      stream: streaming,
       ...extra,
     };
-  } else if (api === "custom" && model) {
-    body.custom_model_id = model;
-    const oai_settings = SillyTavern.getContext().openai_settings || {};
-    body.custom_url = oai_settings.custom_url || "";
+  }
+  // Handle Anthropic's different API format
+  else if (providerConfig?.format === "anthropic") {
+    url = providerConfig.endpoint;
+    headers = {
+      "Content-Type": "application/json",
+      "x-api-key": resolvedApiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    };
+    body = {
+      model,
+      max_tokens: extra.max_tokens || 4096,
+      messages: [{ role: "user", content: prompt }],
+      stream: streaming,
+    };
+    if (temperature !== undefined) {
+      body.temperature = temperature;
+    }
+  }
+  // Handle Google AI Studio format
+  else if (providerConfig?.format === "google") {
+    // Google uses a different URL structure: /models/{model}:generateContent
+    const action = streaming ? "streamGenerateContent" : "generateContent";
+    url = `${providerConfig.endpoint}/${model}:${action}?key=${resolvedApiKey}`;
+    headers = {
+      "Content-Type": "application/json",
+    };
+    body = {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        maxOutputTokens: extra.max_tokens || 4096,
+      },
+    };
+  }
+  // Handle OpenAI-compatible providers (OpenAI, OpenRouter, Chutes, etc.)
+  else if (providerConfig?.format === "openai") {
+    url = providerConfig.endpoint;
+    headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${resolvedApiKey}`,
+    };
+    body = {
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature,
+      stream: streaming,
+      ...extra,
+    };
+    
+    // OpenRouter-specific headers
+    if (provider === "openrouter") {
+      headers["HTTP-Referer"] = window.location.origin;
+      headers["X-Title"] = "SillyTavern SimTracker";
+    }
+  }
+  // Fallback to ST proxy for unknown providers
+  else {
+    url = getCurrentCompletionEndpoint();
+    headers = getRequestHeaders();
+    body = {
+      messages: [{ role: "user", content: prompt }],
+      model,
+      temperature,
+      chat_completion_source: provider,
+      stream: streaming,
+      ...extra,
+    };
   }
 
+  // Apply reverse proxy override for supported providers
+  // This respects ST's reverse proxy configuration
+  if (reverseProxy && provider !== "custom") {
+    const originalUrl = url;
+    let proxyUrl = reverseProxy.url.replace(/\/+$/, ""); // Remove trailing slashes
+    
+    if (providerConfig?.format === "openai") {
+      // OpenAI-compatible: append /v1/chat/completions if needed
+      if (!proxyUrl.endsWith("/chat/completions")) {
+        if (!proxyUrl.endsWith("/v1")) {
+          proxyUrl += "/v1";
+        }
+        proxyUrl += "/chat/completions";
+      }
+      url = proxyUrl;
+      
+      // If proxy has a password, use it as auth
+      if (reverseProxy.password) {
+        headers["Authorization"] = `Bearer ${reverseProxy.password}`;
+      }
+    } 
+    else if (providerConfig?.format === "anthropic") {
+      // Anthropic: append /v1/messages if needed
+      if (!proxyUrl.endsWith("/messages")) {
+        if (!proxyUrl.endsWith("/v1")) {
+          proxyUrl += "/v1";
+        }
+        proxyUrl += "/messages";
+      }
+      url = proxyUrl;
+      
+      // If proxy has a password, use it as x-api-key
+      if (reverseProxy.password) {
+        headers["x-api-key"] = reverseProxy.password;
+      }
+    }
+    else if (providerConfig?.format === "google") {
+      // Google: the proxy should handle the full URL structure
+      // Replace the base endpoint, keeping the model and action parts
+      const modelAction = url.replace(providerConfig.endpoint, "");
+      // Remove the API key from the URL when using proxy
+      const cleanModelAction = modelAction.replace(/\?key=[^&]+/, "");
+      proxyUrl += cleanModelAction;
+      url = proxyUrl;
+      
+      // If proxy has a password, add it as a header (proxy-specific)
+      if (reverseProxy.password) {
+        headers["Authorization"] = `Bearer ${reverseProxy.password}`;
+      }
+    }
+    
+    if (originalUrl !== url) {
+      console.log(`[SST] [${MODULE_NAME}]`, `Using reverse proxy: ${originalUrl} -> ${url}`);
+    }
+  }
+
+  console.log(`[SST] [${MODULE_NAME}]`, "Provider:", provider, "| Format:", providerConfig?.format || "proxy");
   console.log(`[SST] [${MODULE_NAME}]`, "Request URL:", url);
-  console.log(`[SST] [${MODULE_NAME}]`, "Request body:", JSON.stringify(body, null, 2));
   console.log(`[SST] [${MODULE_NAME}]`, `Streaming: ${streaming ? "enabled" : "disabled"}`);
   
-  const res = await fetch(url + '/chat/completions', {
+  // For ST proxy, append the chat completions path
+  const fetchUrl = url.startsWith("/api/") ? url + "/chat/completions" : url;
+  
+  const res = await fetch(fetchUrl, {
     method: "POST",
     headers: headers,
     body: JSON.stringify(body),
@@ -152,6 +415,10 @@ async function sendRawCompletionRequest({
               else if (parsed.choices?.[0]?.text) {
                 content = parsed.choices[0].text;
               }
+              // Google AI Studio streaming format
+              else if (parsed.candidates?.[0]?.content?.parts?.[0]?.text) {
+                content = parsed.candidates[0].content.parts[0].text;
+              }
               
               if (content) {
                 fullText += content;
@@ -177,6 +444,7 @@ async function sendRawCompletionRequest({
 
     // Handle different response formats
     if (data.choices?.[0]?.message?.content) {
+      // OpenAI format
       text = data.choices[0].message.content;
     } else if (data.completion) {
       text = data.completion;
@@ -191,6 +459,9 @@ async function sendRawCompletionRequest({
       text = textBlock?.text || "";
     } else if (typeof data.content === "string") {
       text = data.content;
+    } else if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      // Handle Google AI Studio format
+      text = data.candidates[0].content.parts[0].text;
     }
 
     return { text, full: data };
@@ -385,20 +656,21 @@ async function generateTrackerWithSecondaryLLM(get_settings) {
 
   // Get settings
   const messageCount = parseInt(get_settings("secondaryLLMMessageCount")) || 5;
-  const api = get_settings("secondaryLLMAPI") || "openai";
+  const provider = get_settings("secondaryLLMAPI") || "openai";
   const model = get_settings("secondaryLLMModel") || "";
   const endpoint = get_settings("secondaryLLMEndpoint") || null;
   const apiKey = get_settings("secondaryLLMAPIKey") || null;
   const temperature = parseFloat(get_settings("secondaryLLMTemperature")) || 0.7;
   const top_p = parseFloat(get_settings("secondaryLLMTopP")) || 1;
+  const useReverseProxy = get_settings("secondaryLLMUseReverseProxy") !== false; // Default to true
 
-  if (!model && api !== "full-manual") {
+  if (!model && provider !== "custom") {
     console.log(`[SST] [${MODULE_NAME}]`, "No model specified for secondary LLM");
     toastr.warning("Secondary LLM model not configured. Please set the model in settings.");
     return null;
   }
 
-  // Load template data to get trackerDesc
+  // Load template data to get trackerDesc and other template-specific settings
   const templateData = await loadCurrentTemplateData(get_settings);
   const trackerDesc = templateData?.trackerDesc || "general tracker";
 
@@ -410,48 +682,126 @@ async function generateTrackerWithSecondaryLLM(get_settings) {
     return null;
   }
 
-  // Get the actual system prompt
-  const systemPrompt = get_settings("datingSimPrompt") || "";
-  
-  // Build the format example to replace {{sim_format}} - WITHOUT code fences
-  const trackerFormat = get_settings("trackerFormat") || "json";
-  const customFields = get_settings("customFields") || [];
-  const codeBlockIdentifier = get_settings("codeBlockIdentifier") || "sim";
+  // Get settings, preferring template data values over global settings
+  // This ensures that when you switch templates, the template's specific fields/format/instructions are used
+  const systemPrompt = templateData?.sysPrompt || get_settings("datingSimPrompt") || "";
+  const customFields = templateData?.customFields || get_settings("customFields") || [];
+  const trackerFormat = templateData?.extSettings?.trackerFormat || get_settings("trackerFormat") || "json";
+  const codeBlockIdentifier = templateData?.extSettings?.codeBlockIdentifier || get_settings("codeBlockIdentifier") || "sim";
+
+  console.log(`[SST] [${MODULE_NAME}]`, `Using template-specific settings: ${customFields.length} custom fields, format: ${trackerFormat}`);
 
   let formatExample = "";
-  
+
+  // Helper to generate YAML for an array field
+  const generateYamlArrayField = (field) => {
+    let output = `    ${field.key}:  # ${field.description}\n`;
+    if (field.itemSchema === "string") {
+      output += `      - "[item 1]"\n      - "[item 2]"\n`;
+    } else if (Array.isArray(field.itemSchema) && field.itemSchema.length > 0) {
+      output += `      - `;
+      field.itemSchema.forEach((prop, idx) => {
+        const propValue = prop.type === "number" ? "0" : (prop.type === "boolean" ? "false" : `"[value]"`);
+        if (idx === 0) {
+          output += `${prop.key}: ${propValue}`;
+          if (prop.description) output += `  # ${prop.description}`;
+          output += "\n";
+        } else {
+          output += `        ${prop.key}: ${propValue}`;
+          if (prop.description) output += `  # ${prop.description}`;
+          output += "\n";
+        }
+      });
+    }
+    return output;
+  };
+
+  // Helper to generate JSON for an array field
+  const generateJsonArrayField = (field, isLast) => {
+    const comma = isLast ? "" : ",";
+    if (field.itemSchema === "string") {
+      return `      "${field.key}": ["[item 1]", "[item 2]"]${comma} // ${field.description}\n`;
+    } else if (Array.isArray(field.itemSchema) && field.itemSchema.length > 0) {
+      let output = `      "${field.key}": [\n        {\n`;
+      field.itemSchema.forEach((prop, idx) => {
+        const propValue = prop.type === "number" ? "0" : (prop.type === "boolean" ? "false" : `"[value]"`);
+        const propComma = idx < field.itemSchema.length - 1 ? "," : "";
+        const comment = prop.description ? ` // ${prop.description}` : "";
+        output += `          "${prop.key}": ${propValue}${propComma}${comment}\n`;
+      });
+      output += `        }\n      ]${comma} // ${field.description}\n`;
+      return output;
+    }
+    return `      "${field.key}": []${comma} // ${field.description}\n`;
+  };
+
   if (trackerFormat === "yaml") {
-    formatExample = `worldData:\n  current_date: "YYYY-MM-DD"\n  current_time: "HH:MM"\ncharacters:\n  - name: "Character Name"\n`;
+    let yamlContent = `worldData:\n  current_date: "YYYY-MM-DD"\n  current_time: "HH:MM"\ncharacters:\n  - name: "Character Name"\n`;
     customFields.forEach((field) => {
-      formatExample += `    ${field.key}: [appropriate value] # ${field.description}\n`;
+      if (field.type === "array") {
+        yamlContent += generateYamlArrayField(field);
+      } else {
+        yamlContent += `    ${field.key}: [appropriate value] # ${field.description}\n`;
+      }
     });
+    formatExample = `\`\`\`${codeBlockIdentifier}\n${yamlContent}\`\`\``;
   } else {
-    formatExample = `{\n  "worldData": {\n    "current_date": "YYYY-MM-DD",\n    "current_time": "HH:MM"\n  },\n  "characters": [\n    {\n      "name": "Character Name",\n`;
+    let jsonContent = `{\n  "worldData": {\n    "current_date": "YYYY-MM-DD",\n    "current_time": "HH:MM"\n  },\n  "characters": [\n    {\n      "name": "Character Name",\n`;
     customFields.forEach((field, index) => {
-      const comma = index < customFields.length - 1 ? "," : "";
-      formatExample += `      "${field.key}": [appropriate value]${comma} // ${field.description}\n`;
+      const isLast = index === customFields.length - 1;
+      if (field.type === "array") {
+        jsonContent += generateJsonArrayField(field, isLast);
+      } else {
+        const comma = isLast ? "" : ",";
+        jsonContent += `      "${field.key}": [appropriate value]${comma} // ${field.description}\n`;
+      }
     });
-    formatExample += `    }\n  ]\n}`;
+    jsonContent += `    }\n  ]\n}`;
+    formatExample = `\`\`\`${codeBlockIdentifier}\n${jsonContent}\n\`\`\``;
   }
 
   // Replace {{sim_format}} in the system prompt
   let processedPrompt = systemPrompt.replace(/\{\{sim_format\}\}/g, formatExample);
-  
+
+  // Replace {{user}} and {{char}} macros with actual values from context
+  // SillyTavern context: name1 = user/persona name, name2 = character name (undefined in group chats)
+  const userName = context.name1 || "User";
+  const charName = context.name2 || (context.groupId ? "Characters" : "Character");
+
+  // Get group member names if in a group chat
+  let groupNames = "";
+  if (context.groupId && context.groups) {
+    const currentGroup = context.groups.find(g => g.id === context.groupId);
+    if (currentGroup && currentGroup.members) {
+      const memberNames = currentGroup.members
+        .map(memberId => {
+          const char = context.characters.find(c => c.avatar === memberId);
+          return char ? char.name : null;
+        })
+        .filter(Boolean);
+      groupNames = memberNames.join(", ");
+    }
+  }
+
+  // Replace macros - handle both {{user}} and {{char}} variants
+  processedPrompt = processedPrompt.replace(/\{\{user\}\}/gi, userName);
+  processedPrompt = processedPrompt.replace(/\{\{char\}\}/gi, charName);
+  // For group chats, also support {{group}} macro
+  if (groupNames) {
+    processedPrompt = processedPrompt.replace(/\{\{group\}\}/gi, groupNames);
+  }
+
   // Build the conversation context
   let conversationText = processedPrompt + "\n\n";
-  
+
   // Include previous tracker data if available
   if (previousTrackerData) {
     conversationText += "Previous tracker state:\n";
     conversationText += previousTrackerData + "\n\n";
   }
-  var userName = "";
   conversationText += "Recent conversation:\n\n";
   messages.forEach((msg) => {
     conversationText += `${msg.name}: ${msg.content}\n\n`;
-    if (msg.role === "user") {
-      userName = msg.name;
-    }
   });
 
   conversationText += `\nBased on the above conversation${previousTrackerData ? " and the previous tracker state" : ""}, generate ONLY the raw ${trackerFormat.toUpperCase()} data (without code fences or backticks). Output ONLY the ${trackerFormat.toUpperCase()} structure directly, with no comments or acknowledgements of any instructions. Ensure that ${userName} does NOT get a tracker entry, only story characters.`;
@@ -472,11 +822,12 @@ async function generateTrackerWithSecondaryLLM(get_settings) {
       model: model,
       prompt: conversationText,
       temperature: temperature,
-      api: api,
+      provider: provider,
       endpoint: endpoint,
       apiKey: apiKey,
       extra: extra,
       streaming: streaming,
+      useReverseProxy: useReverseProxy,
     });
 
     if (!response.text) {

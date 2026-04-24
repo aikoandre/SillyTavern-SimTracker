@@ -1,4 +1,4 @@
-<!-- TEMPLATE NAME: Dating Sim Tracker (Right Side with Tabs) -->
+<!-- TEMPLATE NAME: Disposition Tracker (Right Side with Tabs) -->
 <!-- AUTHOR: Prolix OCs -->
 <!-- POSITION: RIGHT -->
 
@@ -59,7 +59,7 @@
   }
 
   .sim-tracker-tab.active {
-    transform: translateX(-270px);  /* Move into view with card */
+    transform: translateX(-320px);  /* Move into view with card */
     filter: brightness(1.3) !important;
   }
 
@@ -76,7 +76,7 @@
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    font-size: 15px;
+    font-size: 18px;
   }
 
   .sim-tracker-cards-wrapper {
@@ -90,7 +90,9 @@
     background: linear-gradient(145deg, #2c2c2c, #1a1a1a);
     border-radius: 18px;
     padding: 20px;
-    width: 270px;
+    width: 320px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     position: absolute !important;
     right: 0 !important;
@@ -101,7 +103,6 @@
     opacity: 0;
     visibility: hidden;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    overflow: hidden;
     pointer-events: auto !important;
   }
 
@@ -121,11 +122,11 @@
     display: none !important;
   }
 
-  .sim-tracker-card.inactive {
+  .sim-tracker-card.narrative-inactive {
     opacity: 1;
   }
 
-  .sim-tracker-card.inactive.active {
+  .sim-tracker-card.narrative-inactive.active {
     opacity: 1;
   }
 
@@ -133,7 +134,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
   }
 
   .character-name {
@@ -142,14 +143,17 @@
     color: #ffffff;
   }
 
-  .status-indicator {
-    font-size: 1.4em;
+  .status-icons {
+    display: flex;
+    gap: 6px;
+    font-size: 1.3em;
   }
 
   .stats-container {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
   .stat-item {
@@ -161,109 +165,118 @@
   .stat-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     font-size: 0.9em;
     color: rgba(255, 255, 255, 0.7);
   }
 
-  .stat-value-wrapper {
-    display: flex;
-    align-items: center;
-  }
-
   .stat-bar-bg {
     height: 8px;
-    background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
     overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .stat-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .stat-bar-center-mark {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+    z-index: 1;
     height: 100%;
     border-radius: 4px;
+    z-index: 2;
   }
 
-  .status-container {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .relationship-status,
-  .desire-status {
-    margin-bottom: 10px;
-    font-size: 0.95em;
-    color: rgba(255, 255, 255, 0.9);
+  .stat-bar-center-mark {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+    z-index: 3;
   }
 
   .days-counter {
     text-align: left;
     font-style: italic;
     color: rgba(255, 255, 255, 0.8);
-    font-size: 1em;
-    margin-bottom: 15px;
+    font-size: 0.95em;
+    margin-bottom: 12px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .header-badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-weight: 500;
-    font-size: 0.85em;
-    font-style: normal;
-    letter-spacing: 0.25px;
-    background: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(8px) !important;
-  }
-
-  .change-indicator {
-    color: white;
-    font-size: 0.75em;
-    font-weight: 600;
-    padding: 2px 5px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    min-width: 20px;
-    text-align: center;
-    line-height: 1.2;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    margin-left: 6px;
-  }
-
-  .change-indicator.positive {
-    background: rgba(46, 204, 113, 0.9) !important;
-  }
-
-  .change-indicator.negative {
-    background: rgba(231, 76, 60, 0.9) !important;
-  }
-
-  .change-indicator.negative-alt {
-    background: rgba(46, 204, 113, 0.9) !important;
   }
 
   .thought-bubble {
     margin-top: 6px;
-    padding: 15px;
+    padding: 12px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .thought-label {
-    position: relative;
-    padding-top: 8px;
     font-size: 11px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     letter-spacing: 0.25px;
+    margin-bottom: 4px;
+  }
+
+  .section-container {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .section-title {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .connections-list,
+  .belongings-list,
+  .goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .connection-item,
+  .belonging-item,
+  .goal-item {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.85);
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .connection-affinity {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
   }
 
   /* Overlay for inactive characters */
@@ -277,12 +290,31 @@
     opacity: 0.5;
     border-radius: 18px;
     display: none;
-    z-index: 100; /* High z-index to cover all content */
-    pointer-events: none; /* Allow clicks to pass through to underlying elements */
+    z-index: 100;
+    pointer-events: none;
   }
 
   .narrative-inactive .narrative-inactive-overlay {
     display: block;
+  }
+
+  /* Scrollbar styling */
+  .sim-tracker-card::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sim-tracker-card::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  .sim-tracker-card::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .sim-tracker-card::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 </style>
 
@@ -314,135 +346,128 @@
       <!-- Overlay for inactive characters -->
       <div class="narrative-inactive-overlay"></div>
 
-      <!-- Days counter at the top -->
+      <!-- Days counter and time at the top -->
       <div class="days-counter">
-        <span class="header-badge">{{currentDate}}</span>
-        <span class="header-badge">Day {{stats.days_since_first_meeting}}</span>
-        {{#if stats.preg}}<span class="header-badge">🤰{{stats.days_preg}}d</span>{{/if}}
+        {{#if currentDateTime}}{{currentDateTime}}{{else}}Day {{stats.days_since_first_meeting}}{{/if}}
+        {{#if stats.time_known}}
+        <br><span style="font-size: 0.85em; opacity: 0.8;">Known for {{stats.time_known}}</span>
+        {{/if}}
       </div>
 
-      <!-- Character header with name and status -->
+      <!-- Character header with name and status icons -->
       <div class="character-header">
         <div class="character-name">{{characterName}}</div>
-        <div class="status-indicator">
-          {{#if stats.inactive}} 💤 {{else}} {{#if (gt stats.ap 70)}} 😊 {{else
-          if (gt stats.ap 40)}} 😐 {{else}} 😞 {{/if}} {{/if}}
+        <div class="status-icons">
+          {{#if stats.narrativeStatus}}{{stats.narrativeStatus}}{{/if}}
+          {{#if stats.preg}}🤰{{/if}}
+          {{#if stats.reactionIcon}}{{stats.reactionIcon}}{{/if}}
         </div>
       </div>
 
-      <!-- Stats grid with progress bars -->
+      <!-- Core Stats with progress bars -->
       <div class="stats-container">
-        <!-- Affection -->
+        <!-- Affinity (-100 to 100) -->
         <div class="stat-item">
           <div class="stat-header">
-            <span>Affection</span>
-            <span class="stat-value-wrapper">
-              <span>{{stats.ap}}</span>
-              {{#if stats.apChange}}{{#unless (eq stats.apChange 0)}}
-              <span class="change-indicator positive">
-                {{#if (gt stats.apChange 0)}}+{{/if}}{{stats.apChange}}
-              </span>
-              {{/unless}}{{/if}}
-            </span>
+            <span>Affinity</span>
+            <span>{{stats.affinity}}</span>
           </div>
           <div class="stat-bar-bg">
+            <div class="stat-bar-center-mark"></div>
             <div
               class="stat-bar-fill"
-              style="width: {{#if (gt stats.ap 200)}}100{{else}}{{#if stats.ap}}{{divide stats.ap 2}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #ff9a9e, #fad0c4); border-radius: 4px;"
+              style="background: linear-gradient(90deg, #c74550 0%, #ee5a6f 12.5%, #ff6b6b 25%, #ff9999 37.5%, #c4d4d4 50%, #8fd3f4 62.5%, #84fab0 75%, #5a9d7a 87.5%, #4a8d6a 100%);
+                     {{#if (gte stats.affinity 0)}}clip-path: inset(0 {{subtract 50 (multiply (abs stats.affinity) 0.5)}}% 0 50% round 0 4px 4px 0);{{else}}clip-path: inset(0 50% 0 {{subtract 50 (multiply (abs stats.affinity) 0.5)}}% round 4px 0 0 4px);{{/if}}"
             ></div>
           </div>
         </div>
 
-        <!-- Desire -->
+        <!-- Desire (-100 to 100) -->
         <div class="stat-item">
           <div class="stat-header">
             <span>Desire</span>
-            <span class="stat-value-wrapper">
-              <span>{{stats.dp}}</span>
-              {{#if stats.dpChange}}{{#unless (eq stats.dpChange 0)}}
-              <span class="change-indicator negative">
-                {{#if (gt stats.dpChange 0)}}+{{/if}}{{stats.dpChange}}
-              </span>
-              {{/unless}}{{/if}}
-            </span>
+            <span>{{stats.desire}}</span>
           </div>
           <div class="stat-bar-bg">
+            <div class="stat-bar-center-mark"></div>
             <div
               class="stat-bar-fill"
-              style="width: {{#if (gt stats.dp 150)}}100{{else}}{{#if stats.dp}}{{divideRoundUp stats.dp 1.5}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #a1c4fd, #c2e9fb); border-radius: 4px;"
+              style="background: linear-gradient(90deg, #5447b8 0%, #6c5ce7 12.5%, #a29bfe 25%, #c5c0ff 37.5%, #c4d4ec 50%, #c2e9fb 62.5%, #a1c4fd 75%, #7a9ed4 87.5%, #6a8ec4 100%);
+                     {{#if (gte stats.desire 0)}}clip-path: inset(0 {{subtract 50 (multiply (abs stats.desire) 0.5)}}% 0 50% round 0 4px 4px 0);{{else}}clip-path: inset(0 50% 0 {{subtract 50 (multiply (abs stats.desire) 0.5)}}% round 4px 0 0 4px);{{/if}}"
             ></div>
           </div>
         </div>
 
-        <!-- Trust -->
+        <!-- Health (0 to 100) -->
         <div class="stat-item">
           <div class="stat-header">
-            <span>Trust</span>
-            <span class="stat-value-wrapper">
-              <span>{{stats.tp}}</span>
-              {{#if stats.tpChange}}{{#unless (eq stats.tpChange 0)}}
-              <span class="change-indicator positive">
-                {{#if (gt stats.tpChange 0)}}+{{/if}}{{stats.tpChange}}
-              </span>
-              {{/unless}}{{/if}}
-            </span>
+            <span>Health</span>
+            <span>{{stats.health}}</span>
           </div>
           <div class="stat-bar-bg">
             <div
               class="stat-bar-fill"
-              style="width: {{#if (gt stats.tp 150)}}100{{else}}{{#if stats.tp}}{{divideRoundUp stats.tp 1.5}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #84fab0, #8fd3f4); border-radius: 4px;"
-            ></div>
-          </div>
-        </div>
-
-        <!-- Contempt -->
-        <div class="stat-item">
-          <div class="stat-header">
-            <span>Contempt</span>
-            <span class="stat-value-wrapper">
-              <span>{{stats.cp}}</span>
-              {{#if stats.cpChange}}{{#unless (eq stats.cpChange 0)}}
-              <span class="change-indicator negative-alt">
-                {{#if (gt stats.cpChange 0)}}+{{/if}}{{stats.cpChange}}
-              </span>
-              {{/unless}}{{/if}}
-            </span>
-          </div>
-          <div class="stat-bar-bg">
-            <div
-              class="stat-bar-fill"
-              style="width: {{#if (gt stats.cp 150)}}100{{else}}{{#if stats.cp}}{{divideRoundUp stats.cp 1.5}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #d4fc79, #96e6a1); border-radius: 4px;"
+              style="background: linear-gradient(90deg, #8b0000 0%, #d63031 10%, #ff7675 20%, #fdcb6e 40%, #ffeaa7 60%, #00b894 80%, #55efc4 100%);
+                     clip-path: inset(0 {{subtract 100 stats.health}}% 0 0 round 4px);"
             ></div>
           </div>
         </div>
       </div>
 
-      <!-- Status -->
-      <div class="status-container">
-        <div class="relationship-status">
-          <strong>Relationship:</strong> {{stats.relationshipStatus}}
-        </div>
-        <div class="desire-status">
-          <strong>Desire:</strong> {{stats.desireStatus}}
-        </div>
-      </div>
-
-      <!-- Internal thought bubble (conditionally shown) -->
+      <!-- Internal Thought -->
       {{#if stats.internal_thought}}
-      <div class="thought-label">Thinks:</div>
+      <div class="thought-label">Current Thought:</div>
       <div class="thought-bubble">
         <div style="display: flex; align-items: flex-start; gap: 10px">
           <div style="font-size: 1.2em; flex-shrink: 0">💭</div>
           <div
             style="
-              font-size: 0.95em;
+              font-size: 0.9em;
               line-height: 1.4;
               color: rgba(255, 255, 255, 0.85);
-              font-style: italic;
             "
           >
-            {{{cleanThought stats.internal_thought}}}
+            {{stats.internal_thought}}
           </div>
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Connections -->
+      {{#if stats.connections}}
+      <div class="section-container">
+        <div class="section-title">Connections</div>
+        <div class="connections-list">
+          {{#each stats.connections}}
+          <div class="connection-item" style="background: {{#if (gte this.affinity 50)}}rgba(132, 250, 176, 0.08){{else if (gte this.affinity 20)}}rgba(132, 250, 176, 0.05){{else if (gte this.affinity -20)}}rgba(255, 255, 255, 0.03){{else if (gte this.affinity -50)}}rgba(255, 107, 107, 0.05){{else}}rgba(255, 107, 107, 0.08){{/if}};">
+            <span>{{this.name}}</span>
+            <span class="connection-affinity">{{this.affinity}}</span>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Belongings -->
+      {{#if stats.belongings}}
+      <div class="section-container">
+        <div class="section-title">Belongings</div>
+        <div class="belongings-list">
+          {{#each stats.belongings}}
+          <div class="belonging-item">{{this}}</div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      <!-- Goals -->
+      {{#if stats.goals}}
+      <div class="section-container">
+        <div class="section-title">Goals</div>
+        <div class="goals-list">
+          {{#each stats.goals}}
+          <div class="goal-item">{{this}}</div>
+          {{/each}}
         </div>
       </div>
       {{/if}}
@@ -452,31 +477,30 @@
 </div>
 <!-- CARD_TEMPLATE_END -->
 
-  <!-- 
+<!-- 
 TEMPLATE VARIABLES:
 - {{characters}}: Array of character objects with their data
 - {{characterName}}: Character's name
-- {{currentDate}}: Current date in YYYY-MM-DD format
+- {{currentDateTime}}: Current date and time in the narrative
 - {{bgColor}}: Primary background color
 - {{darkerBgColor}}: Darker variant of background color
 - {{contrastColor}}: Contrast color for text against background
-- {{stats.ap}}: Affection points (max 200)
-- {{stats.dp}}: Desire points (max 150)
-- {{stats.tp}}: Trust points (max 150)
-- {{stats.cp}}: Contempt points (max 150)
-- {{stats.apChange}}: Change in affection points (positive/negative/zero)
-- {{stats.dpChange}}: Change in desire points (positive/negative/zero)
-- {{stats.tpChange}}: Change in trust points (positive/negative/zero)
-- {{stats.cpChange}}: Change in contempt points (positive/negative/zero)
+- {{stats.affinity}}: Affinity (-100 to 100)
+- {{stats.desire}}: Desire (-100 to 100)
+- {{stats.health}}: Health (0 to 100)
+- {{stats.affinityChange}}: Change in affinity from last action
+- {{stats.desireChange}}: Change in desire from last action
+- {{stats.healthChange}}: Change in health from last action
 - {{stats.days_since_first_meeting}}: Days since first meeting
+- {{stats.time_known}}: Human-readable time known (e.g., "3 days" or "2 weeks")
+- {{stats.narrativeStatus}}: Status icon (💤 asleep, 🏥 medical, 🪦 dead, etc.)
 - {{stats.preg}}: Boolean for pregnancy status
 - {{stats.days_preg}}: Days pregnant (if applicable)
-- {{stats.internal_thought}}: Character's internal thoughts
-- {{stats.relationshipStatus}}: Relationship status text
-- {{stats.desireStatus}}: Desire status text
+- {{stats.reactionIcon}}: Reaction icon (😊 pleased, 😐 neutral, 😠 displeased)
+- {{stats.internal_thought}}: Character's current internal thought (max 3 sentences)
+- {{stats.connections}}: Array of connections [{name: string, affinity: number}]
+- {{stats.belongings}}: Array of belongings (strings)
+- {{stats.goals}}: Array of goals (strings)
 - {{stats.inactive}}: Boolean for inactive status
-- {{stats.inactiveReason}}: Number indicating reason for inactivity (0-5)
-- {{healthIcon}}: Health status icon (🤕 or 💀)
-- {{reactionEmoji}}: Reaction emoji (👍, 👎, or 😐)
-- {{showThoughtBubble}}: Boolean to show/hide thought bubble
+- {{stats.inactiveReason}}: Number indicating reason for inactivity
 -->
