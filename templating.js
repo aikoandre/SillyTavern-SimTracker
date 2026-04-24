@@ -230,21 +230,12 @@ Handlebars.registerHelper("tabOffset", function (index) {
 });
 
 Handlebars.registerHelper("initials", function (name) {
-  // Extract up to two initials from the name
   if (!name || name.length === 0) return "?";
-  
   const nameParts = name.trim().split(/\s+/);
-  let initials = [];
-  
   if (nameParts.length > 0) {
-    initials.push(nameParts[0].charAt(0).toUpperCase());
+    return nameParts[0].charAt(0).toUpperCase();
   }
-  
-  if (nameParts.length > 1) {
-    initials.push(nameParts[nameParts.length - 1].charAt(0).toUpperCase());
-  }
-  
-  return initials.join(" ");
+  return "?";
 });
 
 Handlebars.registerHelper("cleanThought", function (thought) {
