@@ -234,17 +234,17 @@ Handlebars.registerHelper("initials", function (name) {
   if (!name || name.length === 0) return "?";
   
   const nameParts = name.trim().split(/\s+/);
-  let initials = "";
+  let initials = [];
   
   if (nameParts.length > 0) {
-    initials += nameParts[0].charAt(0).toUpperCase() + ".";
+    initials.push(nameParts[0].charAt(0).toUpperCase());
   }
   
   if (nameParts.length > 1) {
-    initials += nameParts[nameParts.length - 1].charAt(0).toUpperCase() + ".";
+    initials.push(nameParts[nameParts.length - 1].charAt(0).toUpperCase());
   }
   
-  return initials;
+  return initials.join(" ");
 });
 
 Handlebars.registerHelper("cleanThought", function (thought) {

@@ -334,14 +334,14 @@
       <div class="header-row-top">
         <div class="header-badge">{{currentDate}}</div>
         <div style="display: flex; gap: 8px;">
-          <div class="header-badge">Day {{stats.days_since_first_meeting}}</div>
+          <div class="header-badge">{{#if stats.track}}{{stats.track}} • {{/if}}Day {{stats.days_since_first_meeting}}</div>
           {{#if stats.preg}}<div class="header-badge">🤰{{stats.days_preg}}d</div>{{/if}}
         </div>
       </div>
       
       <!-- Character Name and Icons Row -->
       <div class="header-row-middle">
-        <div class="character-name">{{characterName}} <span style="font-size: 0.6em; margin-left: 8px; opacity: 0.8;">{{stats.track}}</span></div>
+        <div class="character-name">{{characterName}}</div>
         <div class="icon-container">
           {{#if healthIcon}}<span>{{healthIcon}}</span>{{/if}}
           {{#if stats.inactive}}

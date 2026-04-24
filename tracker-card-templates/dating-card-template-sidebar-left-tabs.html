@@ -316,14 +316,14 @@
 
       <!-- Days counter at the top -->
       <div class="days-counter">
-        <span class="header-badge">{{currentDate}}</span>
+        <span class="header-badge">{{currentDate}}</span>\n        {{#if stats.track}}<span class="header-badge">{{stats.track}}</span>{{/if}}
         <span class="header-badge">Day {{stats.days_since_first_meeting}}</span>
         {{#if stats.preg}}<span class="header-badge">🤰{{stats.days_preg}}d</span>{{/if}}
       </div>
 
       <!-- Character header with name and status -->
       <div class="character-header">
-        <div class="character-name">{{characterName}} <span style="font-size: 0.6em; margin-left: 8px; opacity: 0.8;">{{stats.track}}</span></div>
+        <div class="character-name">{{characterName}}</div>
         <div class="status-indicator">
           {{#if stats.inactive}} 💤 {{else}} {{#if (gt stats.ap 70)}} 😊 {{else
           if (gt stats.ap 40)}} 😐 {{else}} 😞 {{/if}} {{/if}}

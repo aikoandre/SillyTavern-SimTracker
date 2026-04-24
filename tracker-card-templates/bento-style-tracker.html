@@ -252,8 +252,8 @@
                 {{rawFirstLetter characterName}}
             </div>
             <div class="text-group">
-                <h2>{{characterName}} <span style="font-size: 0.6em; margin-left: 8px; opacity: 0.8;">{{stats.track}}</span></h2>
-                <div class="date">{{currentDate}} • Day {{stats.days_since_first_meeting}}</div>
+                <h2>{{characterName}}</h2>
+                <div class="date">{{#if stats.track}}{{stats.track}} • {{/if}}{{currentDate}} • Day {{stats.days_since_first_meeting}}</div>
             </div>
         </div>
         <div style="display:flex; align-items: center;">
