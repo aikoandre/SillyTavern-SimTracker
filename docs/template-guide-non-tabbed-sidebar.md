@@ -325,11 +325,17 @@ Update trackers when events occur. Check for `sim` codeblocks containing JSON/YA
 
 1. **Order**: Narrative → Tracker → Sim codeblock (NEVER omit sim codeblock)
 2. **Multi-Character**: Generate ONE card per active character, track separately
-3. **Performance**: Max 4 active characters, collapse inactive, preserve all states
+3. **Performance**: Max 12 active characters, collapse inactive, preserve all states
 ```
 
 **3. Stat Definitions:**
 ```markdown
+### Relationship Track Assignment
+
+**Gender-Based Default**: The system automatically assigns a relationship track to each character based on their gender relative to {{user}}:
+- If {{user}} is **male** → female characters = **Romantic Track**, male characters = **Platonic Track**
+- If {{user}} is **female** → male characters = **Romantic Track**, female characters = **Platonic Track**
+
 ### Relationship Meters
 
 **Affection (AP)**: 0-200 - Romantic feelings toward {{user}}

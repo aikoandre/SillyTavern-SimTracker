@@ -309,7 +309,7 @@
             <label for="wide-toggle-{{characterName}}" class="col-center">
                 <div class="wide-avatar">{{rawFirstLetter characterName}}</div>
                 <div class="text-group">
-                    <h2>{{characterName}}</h2>
+                    <h2>{{characterName}} <span style="font-size: 0.6em; margin-left: 8px; opacity: 0.8;">{{stats.track}}</span></h2>
                     <div class="date">{{currentDate}} • Day {{stats.days_since_first_meeting}}</div>
                 </div>
                 <div class="btn-expand"></div>
@@ -385,12 +385,22 @@
                             </div>
 
                             <div class="stat-group">
-                                <!-- Affection -->
+                                {{#unless (eq stats.track "[🤝 Platonic]")}}
+<!-- Affection -->
                                 <div class="stat-mini">
                                     <svg class="icon-md" viewBox="0 0 24 24" fill="#ff9a9e"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                                     <div class="mini-track"><div class="mini-fill f-aff" style="--val: {{divide stats.ap 2}}%"></div></div>
                                 </div>
-                                <!-- Desire -->
+                                {{/unless}}
+{{#if (eq stats.track "[🤝 Platonic]")}}
+<!-- Bond -->
+                                <div class="stat-mini">
+                                    <svg class="icon-md" viewBox="0 0 24 24" fill="#ff9a9e"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                    <div class="mini-track"><div class="mini-fill f-aff" style="--val: {{divide stats.bp 2}}%"></div></div>
+                                </div>
+                                {{/if}}
+{{#unless (eq stats.track "[🤝 Platonic]")}}
+<!-- Desire -->
                                 <div class="stat-mini">
                                     <svg class="icon-md" viewBox="0 0 24 24" fill="url(#gradF3-{{characterName}})">
                                         <defs><linearGradient id="gradF3-{{characterName}}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f093fb"/><stop offset="1" stop-color="#f5576c"/></linearGradient></defs>
@@ -398,7 +408,18 @@
                                     </svg>
                                     <div class="mini-track"><div class="mini-fill f-des" style="--val: {{divide stats.dp 1.5}}%"></div></div>
                                 </div>
-                                <!-- Trust -->
+                                {{/unless}}
+{{#if (eq stats.track "[🤝 Platonic]")}}
+<!-- Respect -->
+                                <div class="stat-mini">
+                                    <svg class="icon-md" viewBox="0 0 24 24" fill="url(#gradF3-{{characterName}})">
+                                        <defs><linearGradient id="gradF3-{{characterName}}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f093fb"/><stop offset="1" stop-color="#f5576c"/></linearGradient></defs>
+                                        <path fill="url(#gradF3-{{characterName}})" d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z"/>
+                                    </svg>
+                                    <div class="mini-track"><div class="mini-fill f-des" style="--val: {{divide stats.rp 1.5}}%"></div></div>
+                                </div>
+                                {{/if}}
+<!-- Trust -->
                                 <div class="stat-mini">
                                     <svg class="icon-md" viewBox="0 0 24 24" fill="#89f7fe"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
                                     <div class="mini-track"><div class="mini-fill f-tru" style="--val: {{divide stats.tp 1.5}}%"></div></div>

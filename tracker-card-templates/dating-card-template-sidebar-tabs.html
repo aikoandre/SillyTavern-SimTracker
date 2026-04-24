@@ -323,7 +323,7 @@
 
       <!-- Character header with name and status -->
       <div class="character-header">
-        <div class="character-name">{{characterName}}</div>
+        <div class="character-name">{{characterName}} <span style="font-size: 0.6em; margin-left: 8px; opacity: 0.8;">{{stats.track}}</span></div>
         <div class="status-indicator">
           {{#if stats.inactive}} 💤 {{else}} {{#if (gt stats.ap 70)}} 😊 {{else
           if (gt stats.ap 40)}} 😐 {{else}} 😞 {{/if}} {{/if}}
@@ -332,7 +332,8 @@
 
       <!-- Stats grid with progress bars -->
       <div class="stats-container">
-        <!-- Affection -->
+        {{#unless (eq stats.track "[🤝 Platonic]")}}
+<!-- Affection -->
         <div class="stat-item">
           <div class="stat-header">
             <span>Affection</span>
@@ -353,7 +354,32 @@
           </div>
         </div>
 
-        <!-- Desire -->
+        {{/unless}}
+{{#if (eq stats.track "[🤝 Platonic]")}}
+<!-- Bond -->
+        <div class="stat-item">
+          <div class="stat-header">
+            <span>Bond</span>
+            <span class="stat-value-wrapper">
+              <span>{{stats.bp}}</span>
+              {{#if stats.bpChange}}{{#unless (eq stats.bpChange 0)}}
+              <span class="change-indicator positive">
+                {{#if (gt stats.bpChange 0)}}+{{/if}}{{stats.bpChange}}
+              </span>
+              {{/unless}}{{/if}}
+            </span>
+          </div>
+          <div class="stat-bar-bg">
+            <div
+              class="stat-bar-fill"
+              style="width: {{#if (gt stats.bp 200)}}100{{else}}{{#if stats.bp}}{{divide stats.bp 2}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #ff9a9e, #fad0c4); border-radius: 4px;"
+            ></div>
+          </div>
+        </div>
+
+        {{/if}}
+{{#unless (eq stats.track "[🤝 Platonic]")}}
+<!-- Desire -->
         <div class="stat-item">
           <div class="stat-header">
             <span>Desire</span>
@@ -374,7 +400,31 @@
           </div>
         </div>
 
-        <!-- Trust -->
+        {{/unless}}
+{{#if (eq stats.track "[🤝 Platonic]")}}
+<!-- Respect -->
+        <div class="stat-item">
+          <div class="stat-header">
+            <span>Respect</span>
+            <span class="stat-value-wrapper">
+              <span>{{stats.rp}}</span>
+              {{#if stats.rpChange}}{{#unless (eq stats.rpChange 0)}}
+              <span class="change-indicator negative">
+                {{#if (gt stats.rpChange 0)}}+{{/if}}{{stats.rpChange}}
+              </span>
+              {{/unless}}{{/if}}
+            </span>
+          </div>
+          <div class="stat-bar-bg">
+            <div
+              class="stat-bar-fill"
+              style="width: {{#if (gt stats.rp 150)}}100{{else}}{{#if stats.rp}}{{divideRoundUp stats.rp 1.5}}{{else}}0{{/if}}{{/if}}%; height: 100%; background: linear-gradient(90deg, #a1c4fd, #c2e9fb); border-radius: 4px;"
+            ></div>
+          </div>
+        </div>
+
+        {{/if}}
+<!-- Trust -->
         <div class="stat-item">
           <div class="stat-header">
             <span>Trust</span>
