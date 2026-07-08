@@ -6,6 +6,31 @@ import { generateTrackerBlock } from "./formatUtils.js";
 const MODULE_NAME = "silly-sim-tracker";
 
 /**
+ * Fetch wrapper that routes external URLs through SillyTavern's CORS proxy.
+ * Falls back to direct fetch if proxy is unavailable.
+ */
+async function proxyFetch(url, options = {}) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return fetch(url, options);
+    }
+    try {
+        const proxyUrl = '/proxy/' + url;
+        const response = await fetch(proxyUrl, options);
+        if (response.status === 404) {
+            const text = await response.clone().text();
+            if (text.includes('CORS proxy is disabled')) {
+                console.warn('[proxyFetch] CORS proxy disabled, falling back to direct fetch');
+                return fetch(url, options);
+            }
+        }
+        return response;
+    } catch (proxyError) {
+        console.warn('[proxyFetch] Proxy failed, falling back to direct:', proxyError.message);
+        return fetch(url, options);
+    }
+}
+
+/**
  * Secret key identifiers used by SillyTavern's secrets system
  * These map to the keys stored via /api/secrets/find
  */
@@ -339,7 +364,7 @@ async function sendRawCompletionRequest({
   // For ST proxy, append the chat completions path
   const fetchUrl = url.startsWith("/api/") ? url + "/chat/completions" : url;
   
-  const res = await fetch(fetchUrl, {
+  const res = await proxyFetch(fetchUrl, {
     method: "POST",
     headers: headers,
     body: JSON.stringify(body),
